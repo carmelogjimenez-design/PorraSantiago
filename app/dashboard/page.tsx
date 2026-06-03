@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../(auth)/actions";
+import Onboarding from "./onboarding";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -20,6 +21,8 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
+      <Onboarding />
+
       <header className="rise mb-8 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-dim)]">
@@ -46,7 +49,10 @@ export default async function DashboardPage() {
             <p className="text-lg font-bold">{name}</p>
             <p className="text-sm text-[var(--text-dim)]">{user.email}</p>
             {profile?.favorite_country && (
-              <p className="mt-1 text-sm font-semibold" style={{ color: "var(--accent)" }}>
+              <p
+                className="mt-1 text-sm font-semibold"
+                style={{ color: "var(--accent)" }}
+              >
                 ⭐ {profile.favorite_country}
               </p>
             )}
