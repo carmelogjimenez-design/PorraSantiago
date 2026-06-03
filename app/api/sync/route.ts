@@ -4,28 +4,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API = "https://v3.football.api-sports.io";
-const LEAGUE = 1;
-const SEASON = 2026;
+const API = "https://api.football-data.org/v4";
+const COMP = "WC"; // FIFA World Cup
 
 async function apiGet(path: string) {
   const res = await fetch(`${API}${path}`, {
-    headers: { "x-apisports-key": process.env.API_FOOTBALL_KEY ?? "" },
+    headers: { "X-Auth-Token": process.env.FOOTBALL_DATA_TOKEN ?? "" },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`API-Football ${path} -> HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.errors && Object.keys(json.errors).length) {
-    throw new Error("API-Football error: " + JSON.stringify(json.errors));
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`football-data ${path} -> HTTP ${res.status} ${text.slice(0, 200)}`);
   }
-  return json.response ?? [];
+  return res.json();
 }
 
-function statusMap(short: string): "scheduled" | "live" | "finished" | "postponed" {
-  if (["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT"].includes(short)) return "live";
-  if (["FT", "AET", "PEN"].includes(short)) return "finished";
-  if (["PST", "CANC", "ABD", "SUSP", "AWD", "WO"].includes(short)) return "postponed";
+function statusMap(s: string): "scheduled" | "live" | "finished" | "postponed" {
+  if (s === "IN_PLAY" || s === "PAUSED") return "live";
+  if (s === "FINISHED") return "finished";
+  if (["POSTPONED", "SUSPENDED", "CANCELLED", "CANCELED"].includes(s)) return "postponed";
   return "scheduled";
+}
+
+function groupLetter(raw: string): string {
+  return String(raw || "").trim().slice(-1).toUpperCase(); // "GROUP_A" -> "A"
 }
 
 export async function GET(request: Request) {
@@ -46,18 +48,22 @@ export async function GET(request: Request) {
       (groupsRows ?? []).map((g: { label: string; id: number }) => [g.label, g.id])
     );
 
-    const standings = await apiGet(`/standings?league=${LEAGUE}&season=${SEASON}`);
-    const groupsData: Array<Array<Record<string, unknown>>> = standings[0]?.league?.standings ?? [];
+    // STANDINGS -> equipos + grupo
+    const sData = await apiGet(`/competitions/${COMP}/standings`);
+    const blocks = ((sData.standings ?? []) as Array<Record<string, unknown>>).filter(
+      (b) => b.type === "TOTAL"
+    );
 
     const teamUpserts: Record<string, unknown>[] = [];
-    for (const groupArr of groupsData) {
-      for (const row of groupArr as Array<Record<string, unknown>>) {
-        const label = String((row.group as string) || "").trim().slice(-1).toUpperCase();
-        const team = row.team as { id: number; name: string; logo: string };
+    for (const block of blocks) {
+      const label = groupLetter(block.group as string);
+      const table = (block.table ?? []) as Array<Record<string, unknown>>;
+      for (const row of table) {
+        const team = row.team as { id: number; name: string; crest: string };
         teamUpserts.push({
           api_team_id: team.id,
           name: team.name,
-          flag_url: team.logo,
+          flag_url: team.crest,
           group_id: groupIdByLabel.get(label) ?? null,
         });
       }
@@ -75,20 +81,26 @@ export async function GET(request: Request) {
       ])
     );
 
+    // STANDINGS rows
     const standingUpserts: Record<string, unknown>[] = [];
-    for (const groupArr of groupsData) {
-      for (const row of groupArr as Array<Record<string, unknown>>) {
-        const label = String((row.group as string) || "").trim().slice(-1).toUpperCase();
+    for (const block of blocks) {
+      const label = groupLetter(block.group as string);
+      const group_id = groupIdByLabel.get(label);
+      const table = (block.table ?? []) as Array<Record<string, unknown>>;
+      for (const row of table) {
         const team = row.team as { id: number };
-        const group_id = groupIdByLabel.get(label);
         const mapped = teamByApi.get(team.id);
         if (!group_id || !mapped) continue;
-        const all = row.all as { played: number; win: number; draw: number; lose: number; goals: { for: number; against: number } };
         standingUpserts.push({
           group_id, team_id: mapped.id,
-          played: all?.played ?? 0, won: all?.win ?? 0, drawn: all?.draw ?? 0, lost: all?.lose ?? 0,
-          gf: all?.goals?.for ?? 0, ga: all?.goals?.against ?? 0,
-          points: (row.points as number) ?? 0, rank: (row.rank as number) ?? null,
+          played: (row.playedGames as number) ?? 0,
+          won: (row.won as number) ?? 0,
+          drawn: (row.draw as number) ?? 0,
+          lost: (row.lost as number) ?? 0,
+          gf: (row.goalsFor as number) ?? 0,
+          ga: (row.goalsAgainst as number) ?? 0,
+          points: (row.points as number) ?? 0,
+          rank: (row.position as number) ?? null,
         });
       }
     }
@@ -97,28 +109,28 @@ export async function GET(request: Request) {
     }
     summary.standings = standingUpserts.length;
 
-    const fixtures = await apiGet(`/fixtures?league=${LEAGUE}&season=${SEASON}`);
+    // MATCHES (solo fase de grupos)
+    const mData = await apiGet(`/competitions/${COMP}/matches`);
     const matchUpserts: Record<string, unknown>[] = [];
-    for (const fx of fixtures as Array<Record<string, unknown>>) {
-      const league = fx.league as { round?: string };
-      const round = league?.round ?? "";
-      if (!round.toLowerCase().includes("group")) continue;
-      const teams = fx.teams as { home: { id: number }; away: { id: number } };
-      const home = teamByApi.get(teams.home?.id);
-      const away = teamByApi.get(teams.away?.id);
+    for (const m of (mData.matches ?? []) as Array<Record<string, unknown>>) {
+      if (m.stage !== "GROUP_STAGE") continue;
+      const homeT = m.homeTeam as { id: number };
+      const awayT = m.awayTeam as { id: number };
+      const home = teamByApi.get(homeT?.id);
+      const away = teamByApi.get(awayT?.id);
       if (!home || !away) continue;
-      const fixture = fx.fixture as { id: number; date: string; venue?: { name?: string }; status?: { short?: string } };
-      const goals = fx.goals as { home: number | null; away: number | null };
+      const score = m.score as { fullTime?: { home: number | null; away: number | null } };
+      const label = groupLetter((m.group as string) || "");
       matchUpserts.push({
-        api_fixture_id: fixture.id,
-        group_id: home.group_id,
+        api_fixture_id: String(m.id),
+        group_id: groupIdByLabel.get(label) ?? home.group_id,
         home_team_id: home.id,
         away_team_id: away.id,
-        kickoff_at: fixture.date,
-        stadium: fixture.venue?.name ?? null,
-        status: statusMap(fixture.status?.short ?? "NS"),
-        home_score: goals?.home ?? null,
-        away_score: goals?.away ?? null,
+        kickoff_at: m.utcDate,
+        stadium: (m.venue as string) ?? null,
+        status: statusMap((m.status as string) ?? "SCHEDULED"),
+        home_score: score?.fullTime?.home ?? null,
+        away_score: score?.fullTime?.away ?? null,
         updated_at: new Date().toISOString(),
       });
     }
@@ -129,14 +141,14 @@ export async function GET(request: Request) {
     summary.matches = matchUpserts.length;
 
     await supabase.from("api_sync_logs").insert({
-      source: "api-football", endpoint: "/standings + /fixtures", status: "ok",
+      source: "football-data", endpoint: "/standings + /matches", status: "ok",
       rows_upserted: summary.teams + summary.matches, finished_at: new Date().toISOString(),
     });
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await supabase.from("api_sync_logs").insert({
-      source: "api-football", endpoint: "/standings + /fixtures", status: "error",
+      source: "football-data", endpoint: "/standings + /matches", status: "error",
       error: message, finished_at: new Date().toISOString(),
     });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
