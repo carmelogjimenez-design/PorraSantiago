@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =================================================================
+   LA PORRA DE SANTIAGO — Tema "Clean / Electric Red"
+   Blanco, minimalista, editorial. Acento rojo eléctrico.
+   White, minimalist, editorial. Electric red accent.
+   ================================================================= */
+:root {
+  --accent: #ff1f3d;          /* rojo eléctrico / electric red */
+  --accent-deep: #e00a26;     /* hover */
+  --accent-soft: #ffe9ec;     /* fondo suave del acento / soft accent bg */
+  --bg: #ffffff;
+  --bg-soft: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e6e8ec;
+  --text: #0b0d11;            /* casi negro / near-black */
+  --text-dim: #6b7280;
+  --danger: #d11a2a;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tarjeta limpia y plana / clean flat card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(11, 13, 17, 0.04),
+    0 12px 28px -16px rgba(11, 13, 17, 0.12);
+}
+
+/* Línea divisoria fina / hairline */
+.hairline { border-color: var(--border); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
