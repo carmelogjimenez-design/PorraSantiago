@@ -1,179 +1,241 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "../(auth)/actions";
+import AppShell from "../components/app-shell";
 import Onboarding from "./onboarding";
 import Countdown from "./countdown";
-import BottomNav from "../components/bottom-nav";
 
 export const dynamic = "force-dynamic";
 
+type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
+type MatchRow = {
+  id: string; home_team_id: string; away_team_id: string;
+  kickoff_at: string; status: string;
+};
+type GroupRow = { id: number; label: string };
+
+function abbr(name: string) {
+  return name.slice(0, 3).toUpperCase();
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, totalRes, doneRes, firstRes, ptsRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, favorite_country")
-      .eq("id", user.id)
-      .single(),
-    supabase.from("matches").select("id", { count: "exact", head: true }),
-    supabase
-      .from("predictions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
-    supabase
-      .from("matches")
-      .select("kickoff_at")
-      .order("kickoff_at")
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("predictions").select("points").eq("user_id", user.id),
-  ]);
+  const nowIso = new Date().toISOString();
+  const [profileRes, totalRes, doneRes, ptsRes, firstRes, teamsRes, nextRes, groupsRes] =
+    await Promise.all([
+      supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+      supabase.from("matches").select("id", { count: "exact", head: true }),
+      supabase.from("predictions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("predictions").select("points").eq("user_id", user.id),
+      supabase.from("matches").select("kickoff_at").order("kickoff_at").limit(1).maybeSingle(),
+      supabase.from("teams").select("id,name,flag_url,group_id"),
+      supabase.from("matches").select("id,home_team_id,away_team_id,kickoff_at,status")
+        .gt("kickoff_at", nowIso).order("kickoff_at").limit(5),
+      supabase.from("groups").select("id,label").order("id").limit(4),
+    ]);
 
   const name = profileRes.data?.display_name ?? "Jugador";
   const total = totalRes.count ?? 72;
   const done = doneRes.count ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const points = (ptsRes.data ?? []).reduce((a, r: { points: number | null }) => a + (r.points ?? 0), 0);
   const kickoff = firstRes.data?.kickoff_at ?? "2026-06-11T16:00:00Z";
-  const points = (ptsRes.data ?? []).reduce(
-    (acc, r: { points: number | null }) => acc + (r.points ?? 0),
-    0
-  );
 
-  // Anillo de progreso / progress ring math (r = 19)
-  const R = 19;
-  const C = 2 * Math.PI * R;
+  const teams = (teamsRes.data ?? []) as TeamRow[];
+  const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
+  const next = (nextRes.data ?? []) as MatchRow[];
+  const groups = (groupsRes.data ?? []) as GroupRow[];
+
+  const R = 19, C = 2 * Math.PI * R;
   const offset = C - (pct / 100) * C;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-5 pb-28 pt-6">
+    <AppShell userName={name} points={points}>
       <Onboarding />
 
-      <header className="rise mb-1 flex items-center justify-between">
-        <div className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">
-          La Porra de <span className="text-[var(--accent)]">Santiago</span>
+      {/* topbar */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="text-sm font-extrabold tracking-wide">
+          <span className="text-[var(--accent)]">MUNDIAL 2026</span>
+          <span className="text-[var(--text-dim)]"> · 48 SELECCIONES</span>
         </div>
-        <form action={signOut}>
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-white">
-            {name.charAt(0).toUpperCase()}
-          </button>
-        </form>
-      </header>
+      </div>
 
-      {/* Hero con cuenta atrás / hero with live countdown */}
-      <section className="rise relative mt-4 overflow-hidden rounded-3xl bg-[var(--text)] p-6 text-white">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[var(--accent)]" />
-        <p className="relative z-[2] text-[11px] font-bold uppercase tracking-[0.18em] text-[#ff8a99]">
-          Mundial 2026 · 48 selecciones
-        </p>
-        <h1 className="relative z-[2] mt-1.5 font-[family-name:var(--font-display)] text-3xl font-extrabold leading-[1.05] tracking-tight">
-          Hola, {name} 👋
-        </h1>
-        <Countdown target={kickoff} />
-      </section>
+      <div className="grid gap-5 lg:grid-cols-[1fr_326px]">
+        {/* ----- columna izquierda ----- */}
+        <div className="min-w-0">
+          {/* hero */}
+          <section className="rise relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--soft)] p-8">
+            <h1 className="font-[family-name:var(--font-display)] text-4xl font-extrabold leading-[0.98] tracking-tight sm:text-5xl">
+              Predice.<br />Compite.<br /><span className="text-[var(--accent)]">Gana.</span>
+            </h1>
+            <p className="mt-3.5 max-w-xs font-semibold text-[var(--text-dim)]">
+              Demuestra que sabes más fútbol que tus amigos.
+            </p>
+            <div className="mt-6 text-[11px] font-extrabold tracking-[0.14em] text-[var(--text-dim)]">
+              FALTA PARA EL MUNDIAL 2026
+            </div>
+            <Countdown target={kickoff} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-icon.svg"
+              alt=""
+              className="pointer-events-none absolute right-5 top-1/2 hidden w-44 -translate-y-1/2 opacity-95 sm:block"
+            />
+          </section>
 
-      {/* Stats reales / real stats */}
-      <section className="rise mt-3.5 flex gap-3">
-        <div className="flex flex-1 items-center gap-3 rounded-2xl bg-[var(--bg-soft)] p-3.5">
-          <div className="relative h-[46px] w-[46px] flex-none">
-            <svg width="46" height="46" className="-rotate-90">
-              <circle
-                cx="23"
-                cy="23"
-                r={R}
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="5"
-              />
-              <circle
-                cx="23"
-                cy="23"
-                r={R}
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="5"
-                strokeLinecap="round"
-                strokeDasharray={C}
-                strokeDashoffset={offset}
-              />
-            </svg>
-            <div className="absolute inset-0 grid place-items-center text-[12px] font-extrabold">
-              {pct}%
-            </div>
+          {/* TU JUEGO */}
+          <h2 className="mb-3 mt-6 text-[13px] font-extrabold tracking-[0.06em]">TU JUEGO</h2>
+          <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <GameCard href="/grupos" color="accent" icon="⚽" title="FASE DE GRUPOS"
+              sub={`${total - done} partidos sin pronosticar`} />
+            <GameCard href="/orden" color="amber" icon="👑" title="ORDEN DE GRUPOS"
+              sub="Predice 1º y 2º de cada grupo" />
+            <GameCard href="/goleadores" color="green" icon="🎯" title="GOLEADORES"
+              sub="Elige tus 3 cracks" />
+            <GameCard href="/ranking" color="purple" icon="🏆" title="RANKING"
+              sub="A por el oro · ¿Quién manda aquí?" />
           </div>
-          <div>
-            <div className="font-[family-name:var(--font-display)] text-xl font-extrabold leading-none">
-              {done}
-              <span className="text-sm text-[var(--text-dim)]">/{total}</span>
-            </div>
-            <div className="mt-1 text-[11px] text-[var(--text-dim)]">
-              pronosticados
-            </div>
-          </div>
-        </div>
 
-        <div className="flex flex-1 items-center gap-3 rounded-2xl bg-[var(--bg-soft)] p-3.5">
-          <div className="grid h-[46px] w-[46px] flex-none place-items-center rounded-xl bg-[var(--accent-soft)] font-[family-name:var(--font-display)] text-xl font-extrabold text-[var(--accent-deep)]">
-            🏆
+          {/* GRUPOS resumen */}
+          <div className="mt-7 flex items-center justify-between">
+            <h2 className="text-[13px] font-extrabold tracking-[0.06em]">GRUPOS</h2>
+            <Link href="/grupos" className="text-xs font-bold text-[var(--accent)]">
+              Ver todos los grupos ›
+            </Link>
           </div>
-          <div>
-            <div className="font-[family-name:var(--font-display)] text-xl font-extrabold leading-none">
-              {points}
-              <span className="text-sm text-[var(--text-dim)]"> pts</span>
-            </div>
-            <div className="mt-1 text-[11px] text-[var(--text-dim)]">
-              ranking pronto
-            </div>
+          <div className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {groups.map((g) => {
+              const gt = teams.filter((t) => t.group_id === g.id).slice(0, 4);
+              return (
+                <div key={g.id} className="card p-4">
+                  <div className="mb-2.5 text-[11px] font-extrabold tracking-[0.1em] text-[var(--text-dim)]">
+                    GRUPO {g.label}
+                  </div>
+                  {gt.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2 py-1 text-[13px] font-semibold">
+                      <Flag src={t.flag_url} name={t.name} sm />
+                      <span className="truncate">{t.name}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </section>
 
-      <h2 className="mb-3 mt-6 font-[family-name:var(--font-display)] text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--text-dim)]">
-        Tu juego
-      </h2>
+        {/* ----- columna derecha ----- */}
+        <div className="flex flex-col gap-4">
+          {/* progreso */}
+          <div className="card flex items-center gap-3.5 p-4">
+            <div className="relative h-[52px] w-[52px] flex-none">
+              <svg width="52" height="52" className="-rotate-90">
+                <circle cx="26" cy="26" r={R} fill="none" stroke="var(--soft)" strokeWidth="6" />
+                <circle cx="26" cy="26" r={R} fill="none" stroke="var(--accent)" strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={C} strokeDashoffset={offset} />
+              </svg>
+              <div className="absolute inset-0 grid place-items-center text-[11px] font-extrabold">{pct}%</div>
+            </div>
+            <div className="flex-1">
+              <div className="text-2xl font-extrabold leading-none">
+                {done}<span className="text-sm font-bold text-[var(--text-dim)]">/{total}</span>
+              </div>
+              <div className="mt-1 text-[10px] font-extrabold tracking-[0.08em] text-[var(--text-dim)]">
+                PRONOSTICADOS
+              </div>
+            </div>
+          </div>
 
-      <nav className="stagger grid grid-cols-2 gap-3">
-        {[
-          {
-            href: "/grupos",
-            icon: "⚽",
-            t: "Fase de grupos",
-            s: `${total - done} sin pronosticar`,
-          },
-          {
-            href: "/grupos",
-            icon: "🥇",
-            t: "Orden de grupos",
-            s: "Predice 1º y 2º",
-          },
-          {
-            href: "/grupos",
-            icon: "🎯",
-            t: "Goleadores",
-            s: "Elige tus 3 cracks",
-          },
-          { href: "/ranking", icon: "🏆", t: "Ranking", s: "A por el oro" },
-        ].map((c) => (
-          <Link
-            key={c.t}
-            href={c.href}
-            className="card flex flex-col gap-2.5 p-4 transition active:scale-[0.97]"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent-soft)] text-xl">
-              {c.icon}
-            </span>
-            <span className="text-[15px] font-bold">{c.t}</span>
-            <span className="text-xs text-[var(--text-dim)]">{c.s}</span>
+          {/* puntos */}
+          <Link href="/ranking" className="card flex items-center gap-3.5 p-4">
+            <span className="grid h-[46px] w-[46px] flex-none place-items-center rounded-xl bg-[var(--accent-soft)] text-xl">🏆</span>
+            <div className="flex-1">
+              <div className="text-2xl font-extrabold leading-none">
+                {points} <span className="text-sm font-bold text-[var(--text-dim)]">pts</span>
+              </div>
+              <div className="mt-1 text-[10px] font-extrabold tracking-[0.08em] text-[var(--text-dim)]">
+                RANKING PRONTO
+              </div>
+            </div>
+            <span className="text-[var(--text-dim)]">›</span>
           </Link>
-        ))}
-      </nav>
 
-      <BottomNav />
-    </main>
+          {/* Top 3 (estado honesto) */}
+          <div className="card p-4">
+            <div className="mb-1 text-[12px] font-extrabold tracking-[0.08em]">TOP 3 POR AHORA</div>
+            <p className="py-3 text-center text-[13px] font-semibold text-[var(--text-dim)]">
+              Aún sin clasificación.<br />Empieza cuando ruede el balón ⚽
+            </p>
+          </div>
+
+          {/* Próximos partidos REALES */}
+          <div className="card p-4">
+            <div className="mb-1 flex items-center justify-between">
+              <div className="text-[12px] font-extrabold tracking-[0.08em]">PRÓXIMOS PARTIDOS</div>
+              <Link href="/grupos" className="text-[11px] font-bold text-[var(--accent)]">Ver todos</Link>
+            </div>
+            {next.length === 0 ? (
+              <p className="py-3 text-center text-[13px] text-[var(--text-dim)]">Sin partidos próximos.</p>
+            ) : (
+              next.map((m, i) => {
+                const h = teamById.get(m.home_team_id);
+                const a = teamById.get(m.away_team_id);
+                const d = new Date(m.kickoff_at);
+                const day = d.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "short" }).toUpperCase();
+                const time = d.toLocaleTimeString("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={m.id} className={`flex items-center gap-2 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
+                    <Flag src={h?.flag_url ?? null} name={h?.name ?? "?"} />
+                    <span className="w-9 text-[12px] font-extrabold">{abbr(h?.name ?? "?")}</span>
+                    <span className="ml-auto text-center text-[10px] font-bold leading-tight text-[var(--text-dim)]">
+                      {day}<br />{time}
+                    </span>
+                    <span className="ml-auto w-9 text-right text-[12px] font-extrabold">{abbr(a?.name ?? "?")}</span>
+                    <Flag src={a?.flag_url ?? null} name={a?.name ?? "?"} />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* footer */}
+      <div className="mt-8 border-t border-[var(--border)] pt-5 text-xs font-semibold text-[var(--text-dim)]">
+        © 2026 La Porra de Santiago · Todos los derechos reservados
+      </div>
+    </AppShell>
+  );
+}
+
+function Flag({ src, name, sm }: { src: string | null; name: string; sm?: boolean }) {
+  const cls = sm ? "h-4 w-6" : "h-5 w-7";
+  if (!src)
+    return <span className={`${cls} flex-none rounded bg-[var(--soft)]`} aria-label={name} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={name} className={`${cls} flex-none rounded object-cover ring-1 ring-[var(--border)]`} />;
+}
+
+function GameCard({ href, color, icon, title, sub }:
+  { href: string; color: "accent" | "amber" | "green" | "purple"; icon: string; title: string; sub: string }) {
+  const map = {
+    accent: { b: "var(--accent)", bg: "var(--accent-soft)" },
+    amber: { b: "var(--amber)", bg: "var(--amber-soft)" },
+    green: { b: "var(--green)", bg: "var(--green-soft)" },
+    purple: { b: "var(--purple)", bg: "var(--purple-soft)" },
+  }[color];
+  return (
+    <Link href={href} className="card relative p-5 transition active:scale-[0.98]"
+      style={{ borderBottomWidth: 4, borderBottomColor: map.b }}>
+      <span className="absolute right-4 top-4 text-[var(--text-dim)]">›</span>
+      <span className="mb-6 grid h-14 w-14 place-items-center rounded-2xl text-2xl" style={{ background: map.bg }}>
+        {icon}
+      </span>
+      <div className="font-[family-name:var(--font-display)] text-base font-extrabold tracking-wide">{title}</div>
+      <div className="mt-1 text-[13px] font-semibold text-[var(--text-dim)]">{sub}</div>
+    </Link>
   );
 }
