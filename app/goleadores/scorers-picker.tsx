@@ -11,7 +11,7 @@ function Flag({ src, name }: { src: string | null; name: string }) {
   return <img src={src} alt={name} className="h-5 w-7 flex-none rounded object-cover ring-1 ring-[var(--border)]" />;
 }
 
-const POS_LABEL: Record<string, string> = { FW: "Delantero", MF: "Centrocampista" };
+const POS_LABEL: Record<string, string> = { GK: "Portero", DF: "Defensa", MF: "Centrocampista", FW: "Delantero" };
 
 export default function ScorersPicker({
   players, initialSelected, locked,
