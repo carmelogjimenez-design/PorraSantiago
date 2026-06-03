@@ -24,9 +24,9 @@ export default async function GruposPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, ptsRes, groupsRes, teamsRes, matchesRes, predsRes] = await Promise.all([
+  const [profileRes, myPtsRes, groupsRes, teamsRes, matchesRes, predsRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
-    supabase.from("predictions").select("points").eq("user_id", user.id),
+    supabase.rpc("get_my_points"),
     supabase.from("groups").select("id,label").order("id"),
     supabase.from("teams").select("id,name,flag_url,group_id"),
     supabase.from("matches").select("id,group_id,home_team_id,away_team_id,kickoff_at,stadium,status,home_score,away_score").order("kickoff_at"),
@@ -34,7 +34,7 @@ export default async function GruposPage() {
   ]);
 
   const name = profileRes.data?.display_name ?? "Jugador";
-  const points = (ptsRes.data ?? []).reduce((a, r: { points: number | null }) => a + (r.points ?? 0), 0);
+  const points = Number(myPtsRes.data ?? 0);
   const groups = (groupsRes.data ?? []) as GroupRow[];
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const matches = (matchesRes.data ?? []) as MatchRow[];

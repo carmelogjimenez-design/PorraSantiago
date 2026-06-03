@@ -17,12 +17,12 @@ export default async function ReglasPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [p, pts] = await Promise.all([
+  const [p, myPts] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
-    supabase.from("predictions").select("points").eq("user_id", user.id),
+    supabase.rpc("get_my_points"),
   ]);
   const name = p.data?.display_name ?? "Jugador";
-  const points = (pts.data ?? []).reduce((a, r: { points: number | null }) => a + (r.points ?? 0), 0);
+  const points = Number(myPts.data ?? 0);
 
   return (
     <AppShell userName={name} points={points}>
@@ -32,10 +32,7 @@ export default async function ReglasPage() {
         {RULES.map((r) => (
           <div key={r.t} className="card flex gap-3 p-4">
             <span className="text-2xl leading-none">{r.icon}</span>
-            <div>
-              <div className="font-bold">{r.t}</div>
-              <div className="text-sm text-[var(--text-dim)]">{r.d}</div>
-            </div>
+            <div><div className="font-bold">{r.t}</div><div className="text-sm text-[var(--text-dim)]">{r.d}</div></div>
           </div>
         ))}
       </div>

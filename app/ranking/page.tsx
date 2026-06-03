@@ -5,41 +5,112 @@ import AppShell from "../components/app-shell";
 
 export const dynamic = "force-dynamic";
 
+type LbRow = {
+  user_id: string;
+  display_name: string;
+  total_points: number | string;
+  exactos: number | string;
+  jugados: number | string;
+};
+
+const PODIUM = [
+  { h: 86, c: "#c0c5cd", medal: "🥈" },
+  { h: 116, c: "var(--accent)", medal: "🥇" },
+  { h: 66, c: "#d59a5f", medal: "🥉" },
+];
+
 export default async function RankingPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [p, pts] = await Promise.all([
-    supabase.from("profiles").select("display_name").eq("id", user.id).single(),
-    supabase.from("predictions").select("points").eq("user_id", user.id),
-  ]);
-  const name = p.data?.display_name ?? "Jugador";
-  const points = (pts.data ?? []).reduce((a, r: { points: number | null }) => a + (r.points ?? 0), 0);
+
+  const { data: lbData } = await supabase.rpc("get_leaderboard");
+  const lb = ((lbData ?? []) as LbRow[]).map((r) => ({
+    ...r,
+    total_points: Number(r.total_points),
+    exactos: Number(r.exactos),
+    jugados: Number(r.jugados),
+  }));
+
+  const me = lb.find((r) => r.user_id === user.id);
+  const myPoints = me?.total_points ?? 0;
+  const myName = me?.display_name ?? "Jugador";
+  const topHasPoints = (lb[0]?.total_points ?? 0) > 0;
+
+  // top 3 reordenado para el podio: [2º, 1º, 3º]
+  const podium = topHasPoints ? [lb[1], lb[0], lb[2]] : [];
 
   return (
-    <AppShell userName={name} points={points}>
+    <AppShell userName={myName} points={myPoints}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
+      <p className="mt-1 text-sm text-[var(--text-dim)]">
+        {lb.length} {lb.length === 1 ? "jugador" : "jugadores"} en la porra · 3 pts exacto · 1 pt acierto.
+      </p>
 
-      <div className="card mt-5 flex items-end justify-center gap-3 p-6">
-        {[{ h: 80, n: "2", c: "#c0c5cd" }, { h: 112, n: "1", c: "var(--accent)" }, { h: 64, n: "3", c: "#d59a5f" }].map((x, i) => (
-          <div key={i} className="flex-1 text-center">
-            <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-[var(--soft)] text-lg text-[var(--text-dim)]">?</div>
-            <div className="grid place-items-start justify-center rounded-t-2xl pt-2.5 font-[family-name:var(--font-display)] text-xl font-extrabold text-white"
-              style={{ height: x.h, background: x.c }}>{x.n}</div>
-          </div>
-        ))}
-      </div>
+      {topHasPoints ? (
+        <div className="card mt-5 flex items-end justify-center gap-3 p-6">
+          {podium.map((p, i) =>
+            p ? (
+              <div key={p.user_id} className="flex-1 text-center">
+                <div className="mx-auto mb-2 grid h-14 w-14 place-items-center rounded-full bg-[var(--text)] text-lg font-extrabold text-white ring-2 ring-white">
+                  {p.display_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="grid place-items-start justify-center rounded-t-2xl pt-2.5 font-[family-name:var(--font-display)] text-xl font-extrabold text-white"
+                  style={{ height: PODIUM[i].h, background: PODIUM[i].c }}>
+                  {PODIUM[i].medal}
+                </div>
+                <div className="mt-2 truncate text-sm font-bold">{p.display_name}</div>
+                <div className="text-xs text-[var(--text-dim)]">{p.total_points} pts</div>
+              </div>
+            ) : (
+              <div key={i} className="flex-1" />
+            )
+          )}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-2xl bg-[var(--soft)] p-6 text-center">
+          <div className="text-3xl">🏆</div>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-lg font-extrabold">Todo por decidir</h2>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--text-dim)]">
+            El ranking se llena en cuanto terminen los primeros partidos del Mundial.
+            ¡Deja tus pronósticos puestos para no quedarte atrás!
+          </p>
+          <Link href="/grupos" className="mt-4 inline-block rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white">
+            Ir a pronosticar
+          </Link>
+        </div>
+      )}
 
-      <div className="mt-6 rounded-2xl bg-[var(--soft)] p-6 text-center">
-        <div className="text-3xl">🏆</div>
-        <h2 className="mt-2 font-[family-name:var(--font-display)] text-lg font-extrabold">El ranking se activa pronto</h2>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--text-dim)]">
-          En cuanto rueden los primeros partidos empezarás a sumar puntos y aquí verás el podio en directo.
-          ¡Asegúrate de dejar todos tus pronósticos puestos!
-        </p>
-        <Link href="/grupos" className="mt-4 inline-block rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white">
-          Ir a pronosticar
-        </Link>
+      {/* Tabla completa */}
+      <div className="mt-6 space-y-2">
+        {lb.map((r, i) => {
+          const isMe = r.user_id === user.id;
+          return (
+            <div key={r.user_id}
+              className={`flex items-center gap-3 rounded-2xl border p-3 ${
+                isMe ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-white"
+              }`}>
+              <span className={`w-6 text-center font-[family-name:var(--font-display)] text-base font-extrabold ${isMe ? "text-[var(--accent-deep)]" : "text-[var(--text-dim)]"}`}>
+                {i + 1}
+              </span>
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[var(--text)] text-sm font-extrabold text-white">
+                {r.display_name.charAt(0).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold">
+                  {r.display_name} {isMe && <span className="text-[var(--accent)]">(Tú)</span>}
+                </span>
+                <span className="block text-[11px] text-[var(--text-dim)]">
+                  {r.exactos} exactos · {r.jugados} jugados
+                </span>
+              </span>
+              <span className="font-[family-name:var(--font-display)] text-lg font-extrabold">
+                {r.total_points}
+                <span className="ml-0.5 text-[11px] font-bold text-[var(--text-dim)]">pts</span>
+              </span>
+            </div>
+          );
+        })}
       </div>
     </AppShell>
   );

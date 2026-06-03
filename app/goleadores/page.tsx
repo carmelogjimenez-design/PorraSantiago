@@ -9,12 +9,12 @@ export default async function GoleadoresPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [p, pts] = await Promise.all([
+  const [p, myPts] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
-    supabase.from("predictions").select("points").eq("user_id", user.id),
+    supabase.rpc("get_my_points"),
   ]);
   const name = p.data?.display_name ?? "Jugador";
-  const points = (pts.data ?? []).reduce((a, r: { points: number | null }) => a + (r.points ?? 0), 0);
+  const points = Number(myPts.data ?? 0);
 
   return (
     <AppShell userName={name} points={points}>
@@ -26,9 +26,7 @@ export default async function GoleadoresPage() {
           Elegirás tus 3 goleadores y sumarás 3 puntos por cada gol que marquen. Para esto necesitamos
           cargar las plantillas de jugadores en la base de datos: es el siguiente paso que haremos juntos.
         </p>
-        <Link href="/dashboard" className="mt-4 inline-block rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white">
-          Volver al inicio
-        </Link>
+        <Link href="/dashboard" className="mt-4 inline-block rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white">Volver al inicio</Link>
       </div>
     </AppShell>
   );
