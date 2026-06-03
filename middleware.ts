@@ -1,9 +1,10 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Refresca la sesión y protege rutas privadas.
-// Refreshes the session and protects private routes.
 const PROTECTED = ["/dashboard", "/perfil", "/goleadores", "/mis-pronosticos", "/admin"];
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -16,7 +17,8 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-setAll(cookiesToSet: { name: string; value: string; options?: import("@supabase/ssr").CookieOptions }[]) {          cookiesToSet.forEach(({ name, value }) =>
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           response = NextResponse.next({ request });
@@ -42,7 +44,6 @@ setAll(cookiesToSet: { name: string; value: string; options?: import("@supabase/
     return NextResponse.redirect(url);
   }
 
-  // Si ya está logado y va a /login, lo mandamos al dashboard.
   if (user && path === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
