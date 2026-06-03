@@ -18,6 +18,8 @@
   --text: #0b0d11;            /* casi negro / near-black */
   --text-dim: #6b7280;
   --danger: #d11a2a;
+  --green: #15a34a;
+  --green-soft: #e7f7ec;
 }
 
 body {
@@ -38,11 +40,37 @@ body {
     0 12px 28px -16px rgba(11, 13, 17, 0.12);
 }
 
-/* Línea divisoria fina / hairline */
 .hairline { border-color: var(--border); }
 
+/* Animaciones / animations */
 @keyframes rise {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .rise { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes pop {
+  0%   { transform: scale(0.8); }
+  60%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop 0.35s ease both; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.blink { animation: blink 1s infinite; }
+
+/* Entrada escalonada / staggered entrance */
+.stagger > * { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.19s; }
+.stagger > *:nth-child(5) { animation-delay: 0.24s; }
+.stagger > *:nth-child(6) { animation-delay: 0.29s; }
+
+/* Ocultar scrollbar en barras horizontales / hide scrollbar */
+.no-bar::-webkit-scrollbar { display: none; }
+.no-bar { -ms-overflow-style: none; scrollbar-width: none; }
