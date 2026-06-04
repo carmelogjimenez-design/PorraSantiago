@@ -15,6 +15,9 @@ type LbRow = {
   total_points: number | string;
   exactos: number | string;
   jugados: number | string;
+  rank: number | string;
+  prev_rank: number | null;
+  delta_points: number | string;
 };
 
 const PODIUM = [
@@ -28,12 +31,14 @@ export default async function RankingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: lbData } = await supabase.rpc("get_leaderboard");
+  const { data: lbData } = await supabase.rpc("get_ranking_movement");
   const lb = ((lbData ?? []) as LbRow[]).map((r) => ({
     ...r,
     total_points: Number(r.total_points),
     exactos: Number(r.exactos),
     jugados: Number(r.jugados),
+    delta_points: Number(r.delta_points),
+    prev_rank: r.prev_rank == null ? null : Number(r.prev_rank),
   }));
 
   const me = lb.find((r) => r.user_id === user.id);
@@ -66,6 +71,11 @@ export default async function RankingPage() {
     .filter((r) => r.user_id !== user.id)
     .map((r) => ({ id: r.user_id, name: r.display_name, points: r.total_points }));
 
+  const moved = lb.some((r) => r.delta_points > 0);
+  const byDelta = moved ? [...lb].sort((a, b) => b.delta_points - a.delta_points) : [];
+  const mvp = moved ? byDelta[0] : null;
+  const donkey = moved && byDelta.length > 1 ? byDelta[byDelta.length - 1] : null;
+
   return (
     <AppShell userName={myName} points={myPoints}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
@@ -81,6 +91,31 @@ export default async function RankingPage() {
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
           <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[var(--accent)] text-base text-white">😅</span>
           <p className="flex-1 text-sm font-semibold text-[var(--text)]">{taunt}</p>
+        </div>
+      )}
+
+      {(mvp || donkey) && (
+        <div className="card mt-5 grid gap-3 p-4 sm:grid-cols-2">
+          {mvp && (
+            <div className="flex items-center gap-3 rounded-xl bg-[var(--green-soft)] p-3">
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white text-xl">🦸</span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--green)]">MVP del día</div>
+                <div className="truncate text-sm font-bold">{mvp.display_name}</div>
+                <div className="text-xs font-semibold text-[var(--text-dim)]">+{mvp.delta_points} pts hoy</div>
+              </div>
+            </div>
+          )}
+          {donkey && (
+            <div className="flex items-center gap-3 rounded-xl bg-[var(--soft)] p-3">
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white text-xl">🤡</span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Paquete del día</div>
+                <div className="truncate text-sm font-bold">{donkey.display_name}</div>
+                <div className="text-xs font-semibold text-[var(--text-dim)]">+{donkey.delta_points} pts hoy</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -124,8 +159,15 @@ export default async function RankingPage() {
               className={`flex items-center gap-3 rounded-2xl border p-3 ${
                 isMe ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-white"
               }`}>
-              <span className={`w-6 text-center font-[family-name:var(--font-display)] text-base font-extrabold ${isMe ? "text-[var(--accent-deep)]" : "text-[var(--text-dim)]"}`}>
-                {i + 1}
+              <span className={`flex w-7 flex-col items-center ${isMe ? "text-[var(--accent-deep)]" : "text-[var(--text-dim)]"}`}>
+                <span className="font-[family-name:var(--font-display)] text-base font-extrabold">{i + 1}</span>
+                {r.prev_rank != null && r.prev_rank !== i + 1 && (
+                  r.prev_rank > i + 1 ? (
+                    <span className="text-[10px] font-bold text-[var(--green)]">▲{r.prev_rank - (i + 1)}</span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-[var(--accent)]">▼{(i + 1) - r.prev_rank}</span>
+                  )
+                )}
               </span>
               <Avatar src={r.avatar_url} name={r.display_name} className="h-9 w-9" />
               <span className="min-w-0 flex-1">

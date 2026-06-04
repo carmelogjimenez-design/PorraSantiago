@@ -216,6 +216,9 @@ export async function GET(request: Request) {
       summary.scorers = -1;
     }
 
+    // Foto del ranking (para flechas ↑↓ y MVP/Paquete del día)
+    try { await supabase.rpc("save_ranking_snapshot"); } catch { /* no rompe el sync */ }
+
     await supabase.from("api_sync_logs").insert({
       source: "football-data", endpoint: "/standings + /matches + /scorers", status: "ok",
       rows_upserted: summary.teams + summary.matches + summary.scorers, finished_at: new Date().toISOString(),
