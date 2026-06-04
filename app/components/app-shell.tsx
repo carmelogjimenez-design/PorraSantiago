@@ -4,23 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Icon from "./icons";
 
 const BIZUM = "+34 659 38 46 48";
 
 const NAV = [
-  { href: "/dashboard", label: "Inicio", icon: "🏠" },
-  { href: "/grupos", label: "Fase de grupos", icon: "⚽" },
-  { href: "/orden", label: "Orden de grupos", icon: "🗂️" },
-  { href: "/goleadores", label: "Goleadores", icon: "🎯" },
-  { href: "/ranking", label: "Ranking", icon: "🏆" },
-  { href: "/reglas", label: "Reglas", icon: "📖" },
+  { href: "/dashboard", label: "Inicio", icon: "home" },
+  { href: "/grupos", label: "Fase de grupos", icon: "ball" },
+  { href: "/orden", label: "Orden de grupos", icon: "grid" },
+  { href: "/goleadores", label: "Goleadores", icon: "target" },
+  { href: "/ranking", label: "Ranking", icon: "trophy" },
+  { href: "/reglas", label: "Reglas", icon: "book" },
 ];
 const MOBILE = [
-  { href: "/dashboard", label: "Inicio", icon: "🏠" },
-  { href: "/grupos", label: "Grupos", icon: "⚽" },
-  { href: "/goleadores", label: "Goleadores", icon: "🎯" },
-  { href: "/ranking", label: "Ranking", icon: "🏆" },
-  { href: "/perfil", label: "Perfil", icon: "👤" },
+  { href: "/dashboard", label: "Inicio", icon: "home" },
+  { href: "/grupos", label: "Grupos", icon: "ball" },
+  { href: "/goleadores", label: "Goleadores", icon: "target" },
+  { href: "/ranking", label: "Ranking", icon: "trophy" },
+  { href: "/perfil", label: "Perfil", icon: "user" },
 ];
 const active = (p: string, h: string) => (h === "/dashboard" ? p === "/dashboard" : p.startsWith(h));
 
@@ -89,7 +90,7 @@ export default function AppShell({
               <Link key={n.href} href={n.href}
                 className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold transition ${
                   on ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--text-dim)] hover:bg-[var(--soft)] hover:text-[var(--text)]"}`}>
-                <span className="text-lg">{n.icon}</span>{n.label}
+                <Icon name={n.icon} className="h-5 w-5 flex-none" />{n.label}
               </Link>
             );
           })}
@@ -106,7 +107,7 @@ export default function AppShell({
           </Link>
           <button onClick={doSignOut}
             className="flex items-center justify-center gap-2 rounded-xl py-2 text-[13px] font-bold text-[var(--text-dim)] transition hover:bg-[var(--soft)] hover:text-[var(--accent-deep)]">
-            <span>⎋</span> Cerrar sesión
+            <Icon name="logout" className="h-[18px] w-[18px]" /> Cerrar sesión
           </button>
         </div>
       </aside>
@@ -119,7 +120,7 @@ export default function AppShell({
             <span className="text-sm font-extrabold tracking-tight">LA PORRA <span className="text-[var(--text-dim)]">DE SANTIAGO</span></span>
           </Link>
           <button onClick={doSignOut} className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-[var(--text-dim)] active:bg-[var(--soft)]">
-            ⎋ Salir
+            <Icon name="logout" className="h-4 w-4" /> Salir
           </button>
         </div>
         <div className="px-4 pb-28 pt-5 lg:px-7 lg:pb-10">{children}</div>
@@ -132,7 +133,7 @@ export default function AppShell({
           return (
             <Link key={n.href} href={n.href}
               className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold ${on ? "text-[var(--accent)]" : "text-[var(--text-dim)]"}`}>
-              <span className="text-[21px] leading-none">{n.icon}</span>{n.label}
+              <Icon name={n.icon} className="h-[22px] w-[22px]" />{n.label}
             </Link>
           );
         })}
