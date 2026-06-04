@@ -41,12 +41,31 @@ export default async function RankingPage() {
   const topHasPoints = (lb[0]?.total_points ?? 0) > 0;
   const podium = topHasPoints ? [lb[1], lb[0], lb[2]] : [];
 
+  const meIdx = lb.findIndex((r) => r.user_id === user.id);
+  const pos = meIdx + 1;
+  const isTail = topHasPoints && meIdx >= 0 && lb.length >= 3 && pos >= Math.ceil(lb.length * 0.75);
+  const TAUNTS = [
+    "Vas en el fondo de la tabla, crack. Pero tranqui: ser un puto paquete en el fútbol no es tan grave… como en la vida, lo importante es participar. 🫶",
+    "Último confirmado. Alguien tiene que sujetar la clasificación para que no se caiga, ¡y mira qué bien lo haces! Lo importante es participar. 🏗️",
+    "El VAR ha revisado tu puesto y lo confirma: vas de culo. Pero eres más de disfrutar que de ganar, y eso también cuenta. A participar, campeón. 😏",
+    "Spoiler: remontar lo vas a tener crudo. Da igual ser malísimo en el fútbol, como en todo lo importante es participar (y haber pagado el Bizum). 😂",
+    "Estás a un pasito de pedir el cambio… pero ahí sigues, con dos cojones. Un paquete con honor. Lo importante es participar. 💪",
+  ];
+  const taunt = isTail ? TAUNTS[Math.floor(Math.random() * TAUNTS.length)] : null;
+
   return (
     <AppShell userName={myName} points={myPoints}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
       <p className="mt-1 text-sm text-[var(--text-dim)]">
         {lb.length} {lb.length === 1 ? "jugador" : "jugadores"} en la porra · 3 pts exacto · 1 pt acierto.
       </p>
+
+      {taunt && (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[var(--accent)] text-base text-white">😅</span>
+          <p className="flex-1 text-sm font-semibold text-[var(--text)]">{taunt}</p>
+        </div>
+      )}
 
       {topHasPoints ? (
         <div className="card mt-5 flex items-end justify-center gap-3 p-6">
