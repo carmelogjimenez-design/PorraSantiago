@@ -15,6 +15,7 @@ const NAV = [
   { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
+  { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/reglas", label: "Reglas", icon: "book" },
 ];
 const MOBILE = [
@@ -22,6 +23,7 @@ const MOBILE = [
   { href: "/grupos", label: "Grupos", icon: "ball" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
+  { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/perfil", label: "Perfil", icon: "user" },
 ];
 const active = (p: string, h: string) => (h === "/dashboard" ? p === "/dashboard" : p.startsWith(h));

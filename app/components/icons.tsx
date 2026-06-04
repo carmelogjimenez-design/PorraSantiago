@@ -29,6 +29,7 @@ const PATHS: Record<string, React.ReactNode> = {
   book: (<><path d="M12 5.2C10 3.8 6.8 3.7 4.3 4.3v14c2.5-.6 5.7-.5 7.7 1 2-1.5 5.2-1.6 7.7-1v-14c-2.5-.6-5.7-.5-7.7.9z" /><path d="M12 5.2v14" /></>),
   user: (<><circle cx="12" cy="8" r="3.6" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /></>),
   logout: (<><path d="M9.5 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3.5" /><path d="M15 15.5l4-3.5-4-3.5" /><path d="M19 12H9.5" /></>),
+  gift: (<><rect x="4" y="8.5" width="16" height="12" rx="1.5" /><path d="M12 8.5v12" /><path d="M12 8.5C11.4 6 10.2 4.6 8.6 4.6a1.9 1.9 0 1 0 0 3.9z" /><path d="M12 8.5C12.6 6 13.8 4.6 15.4 4.6a1.9 1.9 0 1 1 0 3.9z" /></>),
 };
 
 export default function Icon({ name, ...props }: { name: string } & SVGProps<SVGSVGElement>) {
