@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Avatar from "../components/avatar";
 import Icon from "../components/icons";
+import RankingTools from "./ranking-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -53,12 +54,28 @@ export default async function RankingPage() {
   ];
   const taunt = isTail ? TAUNTS[Math.floor(Math.random() * TAUNTS.length)] : null;
 
+  const shareLines = lb.slice(0, 10).map((r, i) => {
+    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+    return `${medal} ${r.display_name} — ${r.total_points} pts`;
+  });
+  const shareText =
+    "🏆 LA PORRA DE SANTIAGO\nClasificación:\n" +
+    shareLines.join("\n") +
+    "\n\n👉 https://porra-santiago.vercel.app";
+  const rivals = lb
+    .filter((r) => r.user_id !== user.id)
+    .map((r) => ({ id: r.user_id, name: r.display_name, points: r.total_points }));
+
   return (
     <AppShell userName={myName} points={myPoints}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
       <p className="mt-1 text-sm text-[var(--text-dim)]">
         {lb.length} {lb.length === 1 ? "jugador" : "jugadores"} en la porra · 3 pts exacto · 1 pt acierto.
       </p>
+
+      {rivals.length > 0 && (
+        <RankingTools shareText={shareText} meName={myName} mePoints={myPoints} rivals={rivals} />
+      )}
 
       {taunt && (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
