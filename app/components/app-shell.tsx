@@ -16,6 +16,7 @@ const NAV = [
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
   { href: "/premios", label: "Premios", icon: "gift" },
+  { href: "/penaltis", label: "Penaltis", icon: "goal" },
   { href: "/reglas", label: "Reglas", icon: "book" },
 ];
 const MOBILE = [

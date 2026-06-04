@@ -115,6 +115,18 @@ export default async function DashboardPage() {
             <GameCard href="/ranking" color="purple" icon="trophy" title="RANKING" sub="A por el oro · ¿Quién manda aquí?" />
           </div>
 
+          <Link href="/penaltis" className="card mt-4 flex items-center justify-between gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-md"
+            style={{ borderBottomWidth: 4, borderBottomColor: "var(--purple)" }}>
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-[var(--purple-soft)] text-2xl">🥅</span>
+              <div>
+                <div className="font-[family-name:var(--font-display)] text-base font-extrabold tracking-wide">PENALTIS</div>
+                <div className="text-[13px] font-semibold text-[var(--text-dim)]">Echa unos penaltis mientras esperas · ¿Rey de la peña? 😏</div>
+              </div>
+            </div>
+            <span className="text-[var(--text-dim)]">›</span>
+          </Link>
+
           <div className="mt-7 flex items-center justify-between">
             <h2 className="text-[13px] font-extrabold tracking-[0.06em]">GRUPOS</h2>
             <Link href="/grupos" className="text-xs font-bold text-[var(--accent)]">Ver todos los grupos ›</Link>
