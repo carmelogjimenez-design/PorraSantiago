@@ -2,12 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
+import Avatar from "../components/avatar";
 
 export const dynamic = "force-dynamic";
 
 type LbRow = {
   user_id: string;
   display_name: string;
+  avatar_url: string | null;
   total_points: number | string;
   exactos: number | string;
   jugados: number | string;
@@ -36,8 +38,6 @@ export default async function RankingPage() {
   const myPoints = me?.total_points ?? 0;
   const myName = me?.display_name ?? "Jugador";
   const topHasPoints = (lb[0]?.total_points ?? 0) > 0;
-
-  // top 3 reordenado para el podio: [2º, 1º, 3º]
   const podium = topHasPoints ? [lb[1], lb[0], lb[2]] : [];
 
   return (
@@ -52,9 +52,7 @@ export default async function RankingPage() {
           {podium.map((p, i) =>
             p ? (
               <div key={p.user_id} className="flex-1 text-center">
-                <div className="mx-auto mb-2 grid h-14 w-14 place-items-center rounded-full bg-[var(--text)] text-lg font-extrabold text-white ring-2 ring-white">
-                  {p.display_name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar src={p.avatar_url} name={p.display_name} className="mx-auto mb-2 h-14 w-14" textClass="text-lg" />
                 <div className="grid place-items-start justify-center rounded-t-2xl pt-2.5 font-[family-name:var(--font-display)] text-xl font-extrabold text-white"
                   style={{ height: PODIUM[i].h, background: PODIUM[i].c }}>
                   {PODIUM[i].medal}
@@ -81,7 +79,6 @@ export default async function RankingPage() {
         </div>
       )}
 
-      {/* Tabla completa */}
       <div className="mt-6 space-y-2">
         {lb.map((r, i) => {
           const isMe = r.user_id === user.id;
@@ -93,9 +90,7 @@ export default async function RankingPage() {
               <span className={`w-6 text-center font-[family-name:var(--font-display)] text-base font-extrabold ${isMe ? "text-[var(--accent-deep)]" : "text-[var(--text-dim)]"}`}>
                 {i + 1}
               </span>
-              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[var(--text)] text-sm font-extrabold text-white">
-                {r.display_name.charAt(0).toUpperCase()}
-              </span>
+              <Avatar src={r.avatar_url} name={r.display_name} className="h-9 w-9" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold">
                   {r.display_name} {isMe && <span className="text-[var(--accent)]">(Tú)</span>}

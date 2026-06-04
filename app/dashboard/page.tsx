@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
+import Avatar from "../components/avatar";
 import Countdown from "./countdown";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
 type MatchRow = { id: string; home_team_id: string; away_team_id: string; kickoff_at: string; status: string };
 type GroupRow = { id: number; label: string };
-type LbRow = { user_id: string; display_name: string; total_points: number | string };
+type LbRow = { user_id: string; display_name: string; avatar_url: string | null; total_points: number | string };
 
 const abbr = (n: string) => n.slice(0, 3).toUpperCase();
 
@@ -145,9 +146,7 @@ export default async function DashboardPage() {
               top3.map((r, i) => (
                 <div key={r.user_id} className={`flex items-center gap-2.5 py-1.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
                   <span className="text-base">{medals[i]}</span>
-                  <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[var(--text)] text-[11px] font-extrabold text-white">
-                    {r.display_name.charAt(0).toUpperCase()}
-                  </span>
+                  <Avatar src={r.avatar_url} name={r.display_name} className="h-7 w-7" textClass="text-[11px]" />
                   <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{r.display_name}</span>
                   <span className="text-[13px] font-extrabold text-[var(--accent)]">{r.total_points} pts</span>
                 </div>

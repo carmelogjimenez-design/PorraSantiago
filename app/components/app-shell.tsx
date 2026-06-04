@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "./icons";
+import Avatar from "./avatar";
 
 const BIZUM = "+34 659 38 46 48";
 
@@ -34,11 +35,11 @@ export default function AppShell({
   userName, points, children,
 }: { userName: string; points: number; children: React.ReactNode }) {
   const pathname = usePathname();
-  const initial = userName.charAt(0).toUpperCase();
 
   const [status, setStatus] = useState<"loading" | "paid" | "unpaid">("loading");
   const [onboarded, setOnboarded] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -46,8 +47,9 @@ export default function AppShell({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setStatus("paid"); return; }
       setUserId(user.id);
-      const { data } = await supabase.from("profiles").select("has_paid,onboarded").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("has_paid,onboarded,avatar_url").eq("id", user.id).single();
       setOnboarded(Boolean(data?.onboarded));
+      setAvatar(data?.avatar_url ?? null);
       setStatus(data?.has_paid ? "paid" : "unpaid");
     })();
   }, []);
@@ -98,7 +100,7 @@ export default function AppShell({
 
         <div className="mt-auto flex flex-col gap-2">
           <Link href="/perfil" className="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-2.5">
-            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--text)] text-sm font-extrabold text-white">{initial}</span>
+            <Avatar src={avatar} name={userName} className="h-10 w-10" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-extrabold">{userName}</span>
               <span className="block text-[11px] text-[var(--text-dim)]">Rango: <b className="text-[var(--accent)]">Novato</b></span>
