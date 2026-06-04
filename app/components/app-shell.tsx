@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import Icon from "./icons";
 import Avatar from "./avatar";
 
-const BIZUM = "+34 659 38 46 48";
+const BIZUM = "+34 635 80 25 46";
 
 const NAV = [
   { href: "/dashboard", label: "Inicio", icon: "home" },
