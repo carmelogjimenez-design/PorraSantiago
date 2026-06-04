@@ -76,7 +76,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, scorers: 0 };
+  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, scorers: 0, advanced: 0 };
 
   try {
     const { data: groupsRows } = await supabase.from("groups").select("id,label");
@@ -175,6 +175,21 @@ export async function GET(request: Request) {
       if (error) throw new Error("matches upsert: " + error.message);
     }
     summary.matches = matchUpserts.length;
+
+    // CLASIFICADOS -> teams.advanced (equipos que aparecen en cualquier eliminatoria)
+    const advancedApi = new Set<number>();
+    for (const m of (mData.matches ?? []) as Array<Record<string, unknown>>) {
+      if (m.stage && m.stage !== "GROUP_STAGE") {
+        const h = (m.homeTeam as { id?: number })?.id;
+        const a = (m.awayTeam as { id?: number })?.id;
+        if (h) advancedApi.add(h);
+        if (a) advancedApi.add(a);
+      }
+    }
+    if (advancedApi.size) {
+      await supabase.from("teams").update({ advanced: true }).in("api_team_id", [...advancedApi]);
+    }
+    summary.advanced = advancedApi.size;
 
     // SCORERS -> players.goals (cruce aproximado por equipo + apellido)
     try {
