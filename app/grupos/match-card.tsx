@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { savePrediction, type PredState } from "./actions";
 import type { MatchVM } from "./group-stage";
 
@@ -13,6 +14,59 @@ function Flag({ src, name }: { src: string | null; name: string }) {
     );
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={name} className="h-7 w-9 flex-none rounded object-cover ring-1 ring-[var(--border)]" />;
+}
+
+function PeerPredictions({ matchId, homeScore, awayScore, finished }:
+  { matchId: string; homeScore: number | null; awayScore: number | null; finished: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<Array<{ display_name: string; pred_home: number; pred_away: number }> | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const toggle = async () => {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    if (rows === null) {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.rpc("get_match_predictions", { m_id: matchId });
+        setRows((data ?? []) as Array<{ display_name: string; pred_home: number; pred_away: number }>);
+      } catch {
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className="mt-2.5 border-t border-[var(--border)] pt-2.5">
+      <button onClick={toggle} className="text-[12px] font-bold text-[var(--accent)]">
+        {open ? "Ocultar pronósticos de la peña ▲" : "Ver pronósticos de la peña ▾"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1">
+          {loading ? (
+            <p className="text-[12px] text-[var(--text-dim)]">Cargando…</p>
+          ) : rows && rows.length ? (
+            rows.map((r, i) => {
+              const exact = finished && r.pred_home === homeScore && r.pred_away === awayScore;
+              return (
+                <div key={i} className="flex items-center justify-between gap-2 text-[12px]">
+                  <span className="min-w-0 flex-1 truncate text-[var(--text)]">{r.display_name}</span>
+                  <span className={`font-extrabold ${exact ? "text-[var(--green)]" : "text-[var(--text-dim)]"}`}>
+                    {r.pred_home}-{r.pred_away}{exact ? " ✓" : ""}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-[12px] text-[var(--text-dim)]">Nadie pronosticó este partido.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MatchCard({ m }: { m: MatchVM }) {
@@ -95,10 +149,11 @@ export default function MatchCard({ m }: { m: MatchVM }) {
               : <span className="text-[var(--text-dim)]">No pronosticaste</span>}
             {finished && m.points != null && (
               <span className={`rounded-full px-2.5 py-1 font-extrabold ${m.points > 0 ? "bg-[var(--accent-soft)] text-[var(--accent-deep)]" : "bg-[var(--soft)] text-[var(--text-dim)]"}`}>
-                +{m.points} {m.points === 3 ? "pts 🎯" : "pts"}
+                +{m.points} pts
               </span>
             )}
           </div>
+          <PeerPredictions matchId={m.id} homeScore={m.homeScore} awayScore={m.awayScore} finished={finished} />
         </>
       )}
     </div>

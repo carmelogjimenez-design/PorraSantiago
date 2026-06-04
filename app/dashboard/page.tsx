@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const nowIso = new Date().toISOString();
-  const [profileRes, totalRes, doneRes, firstRes, teamsRes, nextRes, groupsRes, lbRes] =
+  const [profileRes, totalRes, doneRes, firstRes, teamsRes, nextRes, groupsRes, lbRes, groupsDoneRes, scorersDoneRes] =
     await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
       supabase.from("matches").select("id", { count: "exact", head: true }),
@@ -32,6 +32,8 @@ export default async function DashboardPage() {
       supabase.from("matches").select("id,home_team_id,away_team_id,kickoff_at,status").gt("kickoff_at", nowIso).order("kickoff_at").limit(5),
       supabase.from("groups").select("id,label").order("id").limit(4),
       supabase.rpc("get_leaderboard"),
+      supabase.from("group_predictions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("selected_scorers").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     ]);
 
   const name = profileRes.data?.display_name ?? "Jugador";
@@ -39,6 +41,12 @@ export default async function DashboardPage() {
   const done = doneRes.count ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const kickoff = firstRes.data?.kickoff_at ?? "2026-06-11T16:00:00Z";
+
+  const groupsDone = groupsDoneRes.count ?? 0;
+  const groupsTotal = 12;
+  const scorersDone = scorersDoneRes.count ?? 0;
+  const scorersTotal = 3;
+  const allDone = total > 0 && done >= total && groupsDone >= groupsTotal && scorersDone >= scorersTotal;
 
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
@@ -80,6 +88,23 @@ export default async function DashboardPage() {
             <Countdown target={kickoff} />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-icon.svg" alt="" className="pointer-events-none absolute right-5 top-1/2 hidden w-44 -translate-y-1/2 opacity-95 sm:block" />
+          </section>
+
+          <section className="card mt-5 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[13px] font-extrabold tracking-[0.06em]">{allDone ? "¡LO TIENES TODO LISTO! 🎉" : "QUÉ TE FALTA POR RELLENAR"}</h2>
+              {!allDone && <span className="text-[11px] font-bold text-[var(--text-dim)]">Antes del pitido ⏰</span>}
+            </div>
+            <div className="mt-3 space-y-3">
+              <ProgressBar href="/grupos" label="⚽ Partidos" done={done} total={total} />
+              <ProgressBar href="/orden" label="👑 Orden de grupos" done={groupsDone} total={groupsTotal} />
+              <ProgressBar href="/goleadores" label="🎯 Goleadores" done={scorersDone} total={scorersTotal} />
+            </div>
+            {!allDone && (
+              <p className="mt-3 text-[12px] font-semibold text-[var(--text-dim)]">
+                Lo que no rellenes antes de que empiece cada partido se queda sin puntos. ¡No te despistes! 😏
+              </p>
+            )}
           </section>
 
           <h2 className="mb-3 mt-6 text-[13px] font-extrabold tracking-[0.06em]">TU JUEGO</h2>
@@ -207,6 +232,22 @@ function Flag({ src, name, sm }: { src: string | null; name: string; sm?: boolea
   if (!src) return <span className={`${cls} flex-none rounded bg-[var(--soft)]`} aria-label={name} />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={name} className={`${cls} flex-none rounded object-cover ring-1 ring-[var(--border)]`} />;
+}
+
+function ProgressBar({ href, label, done, total }: { href: string; label: string; done: number; total: number }) {
+  const p = total > 0 ? Math.round((done / total) * 100) : 0;
+  const full = total > 0 && done >= total;
+  return (
+    <Link href={href} className="block">
+      <div className="flex items-center justify-between text-[12px] font-bold">
+        <span>{label}</span>
+        <span className={full ? "text-[var(--green)]" : "text-[var(--text-dim)]"}>{done}/{total}{full ? " ✓" : ""}</span>
+      </div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--soft)]">
+        <div className="h-2 rounded-full transition-all" style={{ width: `${p}%`, background: full ? "var(--green)" : "var(--accent)" }} />
+      </div>
+    </Link>
+  );
 }
 
 function GameCard({ href, color, icon, title, sub }:
