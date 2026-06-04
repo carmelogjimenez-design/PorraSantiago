@@ -11,7 +11,7 @@ export default async function PerfilPage() {
   if (!user) redirect("/login");
 
   const [profileRes, myPtsRes] = await Promise.all([
-    supabase.from("profiles").select("display_name,avatar_url,favorite_country").eq("id", user.id).single(),
+    supabase.from("profiles").select("display_name,avatar_url,favorite_country,role").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
   ]);
 
@@ -19,6 +19,7 @@ export default async function PerfilPage() {
   const avatar = profileRes.data?.avatar_url ?? null;
   const country = profileRes.data?.favorite_country ?? null;
   const points = Number(myPtsRes.data ?? 0);
+  const isAdmin = profileRes.data?.role === "admin";
 
   return (
     <AppShell userName={name} points={points}>
@@ -35,6 +36,22 @@ export default async function PerfilPage() {
           <Row label="Puntos" value={`${points} pts`} />
         </div>
       </div>
+
+      {isAdmin && (
+        <a
+          href="/admin"
+          className="card mt-4 flex items-center justify-between gap-3 p-4 transition hover:shadow-md"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">🛠️</span>
+            <div>
+              <div className="text-sm font-extrabold">Panel de admin</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Control en directo: sync, resultados y goles.</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
+      )}
     </AppShell>
   );
 }
