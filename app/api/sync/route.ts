@@ -146,10 +146,17 @@ export async function GET(request: Request) {
     summary.standings = standingUpserts.length;
 
     // MATCHES (solo fase de grupos)
+    // No pisar los partidos editados a mano desde el panel de admin
+    const { data: lockedRows } = await supabase
+      .from("matches").select("api_fixture_id").eq("manual_override", true);
+    const lockedSet = new Set(
+      ((lockedRows ?? []) as Array<{ api_fixture_id: string }>).map((r) => r.api_fixture_id)
+    );
     const mData = await apiGet(`/competitions/${COMP}/matches`);
     const matchUpserts: Record<string, unknown>[] = [];
     for (const m of (mData.matches ?? []) as Array<Record<string, unknown>>) {
       if (m.stage !== "GROUP_STAGE") continue;
+      if (lockedSet.has(String(m.id))) continue; // editado a mano: no tocar
       const homeT = m.homeTeam as { id: number };
       const awayT = m.awayTeam as { id: number };
       const home = teamByApi.get(homeT?.id);

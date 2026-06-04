@@ -61,8 +61,27 @@ export default async function AdminPage() {
         </p>
       </div>
 
-      <div className="card mt-4 p-4 text-[13px] text-[var(--text-dim)]">
-        🔜 Próximamente aquí: <span className="font-bold text-[var(--text)]">editar resultados a mano</span> y <span className="font-bold text-[var(--text)]">ajustar goles de goleadores</span> — tu red de seguridad si la API falla.
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <a href="/admin/resultados" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">🚨</span>
+            <div>
+              <div className="text-sm font-extrabold">Editar resultados</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Mete marcadores a mano si la API falla.</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
+        <a href="/admin/goles" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">🎯</span>
+            <div>
+              <div className="text-sm font-extrabold">Ajustar goles</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Corrige los goles de los goleadores.</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
       </div>
     </AppShell>
   );
