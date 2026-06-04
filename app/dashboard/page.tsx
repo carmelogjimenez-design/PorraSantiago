@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
-import Onboarding from "./onboarding";
 import Countdown from "./countdown";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +55,6 @@ export default async function DashboardPage() {
 
   return (
     <AppShell userName={name} points={points}>
-      <Onboarding />
 
       <div className="mb-5 flex items-center justify-between">
         <div className="text-sm font-extrabold tracking-wide">
