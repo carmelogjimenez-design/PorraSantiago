@@ -13,26 +13,17 @@ function AuthCard() {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, null);
 
   return (
-    <div className="rise w-full max-w-md rounded-3xl border border-black/5 bg-white p-7 shadow-2xl sm:p-9">
-      <div className="mb-6">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">
-          {mode === "login" ? "Entra al juego" : "Únete a la porra"}
-        </h2>
-        <p className="mt-1 text-sm text-[var(--text-dim)]">
-          {mode === "login" ? "Bienvenido de vuelta, crack." : "Crea tu cuenta en menos de 2 minutos."}
-        </p>
-      </div>
-
+    <div className="rise w-full rounded-3xl border border-[var(--border)] bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_12px_32px_-16px_rgba(16,24,40,0.12)] sm:p-9">
       {/* Toggle login/registro */}
-      <div className="mb-6 grid grid-cols-2 gap-1 rounded-full border border-[var(--border)] bg-[var(--soft)] p-1 text-sm">
+      <div className="mb-7 grid grid-cols-2 gap-1 rounded-2xl bg-[var(--soft)] p-1 text-sm">
         {(["login", "register"] as Mode[]).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => setMode(m)}
-            className={`rounded-full py-2 font-bold transition ${
+            className={`rounded-xl py-2.5 font-bold transition ${
               mode === m
-                ? "bg-[var(--accent)] text-white shadow-sm"
+                ? "bg-white text-[var(--text)] shadow-sm"
                 : "text-[var(--text-dim)] hover:text-[var(--text)]"
             }`}
           >
@@ -41,7 +32,7 @@ function AuthCard() {
         ))}
       </div>
 
-      <form key={mode} action={formAction} className="space-y-4">
+      <form key={mode} action={formAction} className="space-y-5">
         <input type="hidden" name="redirect" value={redirect} />
         {mode === "register" && (
           <Field label="Nombre" name="display_name" type="text" placeholder="Santi" autoComplete="name" />
@@ -55,21 +46,21 @@ function AuthCard() {
           autoComplete={mode === "login" ? "current-password" : "new-password"}
         />
         {state?.error && (
-          <p className="rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent-deep)]">
+          <p className="rounded-xl bg-[var(--accent-soft)] px-3.5 py-2.5 text-sm font-semibold text-[var(--accent-deep)]">
             {state.error}
           </p>
         )}
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-[var(--accent)] py-3.5 text-sm font-extrabold tracking-wide text-white transition hover:bg-[var(--accent-deep)] active:scale-[0.98] disabled:opacity-50"
+          className="w-full rounded-xl bg-[var(--accent)] py-3.5 text-sm font-extrabold tracking-wide text-white transition hover:bg-[var(--accent-deep)] active:scale-[0.99] disabled:opacity-50"
         >
-          {pending ? "..." : mode === "login" ? "Entrar al juego ⚡" : "Empezar a jugar ⚡"}
+          {pending ? "Un momento…" : mode === "login" ? "Entrar al juego" : "Empezar a jugar"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-xs text-[var(--text-dim)]">
-        {mode === "login" ? "¿Aún no juegas? Pulsa “Crear cuenta”." : "Regístrate y haz tu porra ya."}
+        {mode === "login" ? "¿Aún no juegas? Pulsa “Crear cuenta”." : "Tu porra lista en menos de 2 minutos."}
       </p>
     </div>
   );
@@ -95,48 +86,30 @@ function Field({
 
 export default function LoginPage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-[#0a0b0f] text-white">
-      {/* Emblema gigante de marca de agua */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo-icon.svg"
-        alt=""
-        className="pointer-events-none absolute -bottom-24 -right-24 w-[560px] max-w-none opacity-[0.05] blur-[1px] sm:w-[720px]"
-      />
-      {/* Glows */}
-      <div className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-[var(--accent)] opacity-20 blur-[120px]" />
-      <div className="pointer-events-none absolute right-1/4 top-0 h-72 w-72 rounded-full bg-[var(--accent)] opacity-10 blur-[120px]" />
-
-      <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col items-center justify-center gap-12 px-6 py-12 lg:flex-row lg:justify-between lg:gap-8">
-        {/* Branding / reto */}
-        <div className="max-w-xl text-center lg:text-left">
-          <div className="mb-6 flex justify-center lg:justify-start">
-            <span className="grid h-24 w-24 place-items-center rounded-full bg-white shadow-[0_0_60px_-10px_var(--accent)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.svg" alt="La Porra de Santiago" className="h-16 w-[60px]" />
-            </span>
-          </div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-white/50">
+    <main className="grid min-h-dvh place-items-center bg-[var(--bg)] px-6 py-14">
+      <div className="w-full max-w-sm">
+        {/* Marca, con aire */}
+        <div className="mb-9 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.svg" alt="La Porra de Santiago" className="mx-auto h-[88px] w-20" />
+          <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.26em] text-[var(--text-dim)]">
             Mundial 2026 · 48 selecciones
           </p>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-6xl">
-            La Porra<br /><span className="text-[var(--accent)]">de Santiago</span>
+          <h1 className="mt-2.5 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-tight">
+            La Porra <span className="text-[var(--accent)]">de Santiago</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-md text-lg font-semibold text-white/70 lg:mx-0">
-            ¿Te crees el puto amo del fútbol? La peña entera lo dice…
-            <span className="text-white"> aquí se demuestra.</span>
+          <p className="mx-auto mt-3 max-w-xs text-[15px] font-medium text-[var(--text-dim)]">
+            Predice, compite y demuestra a la peña quién sabe de fútbol.
           </p>
-          <div className="mt-7 hidden items-center gap-6 text-sm font-bold text-white/60 lg:flex">
-            <span>⚡ 72 partidos</span>
-            <span>👑 Orden de grupos</span>
-            <span>🎯 Goleadores</span>
-          </div>
         </div>
 
-        {/* Tarjeta de acceso */}
         <Suspense fallback={null}>
           <AuthCard />
         </Suspense>
+
+        <p className="mt-8 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-dim)]">
+          La porra más premium del Mundial
+        </p>
       </div>
     </main>
   );
