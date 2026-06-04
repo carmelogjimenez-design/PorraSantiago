@@ -107,8 +107,46 @@ export default function PenaltyGame({ initialRanking, initialBest }: { initialRa
             {/* portero que se mueve y se estira */}
             <div className="pointer-events-none absolute"
               style={{ left: `${gkX}%`, top: `${gkY}%`, transform: "translate(-50%,-50%)", transition: "left .45s cubic-bezier(.34,1.56,.64,1), top .45s cubic-bezier(.34,1.56,.64,1)" }}>
-              <div className="text-4xl"
-                style={{ transition: "transform .45s", transform: animating ? `rotate(${tilt}deg) scale(1.15)` : "rotate(0deg) scale(1)", animation: !animating && phase === "play" ? "gkSway 1.4s ease-in-out infinite" : "none" }}>🧤</div>
+              <div className="relative" style={{ transition: "transform .45s", transform: animating ? `rotate(${tilt}deg) scale(1.15)` : "rotate(0deg) scale(1)", animation: !animating && phase === "play" ? "gkSway 1.4s ease-in-out infinite" : "none" }}>
+                <svg width="62" height="80" viewBox="0 0 120 152" fill="none" aria-label="portero">
+                  <path d="M44 64 L18 40" stroke="#f0b81f" strokeWidth="13" strokeLinecap="round" />
+                  <path d="M76 64 L102 40" stroke="#f0b81f" strokeWidth="13" strokeLinecap="round" />
+                  <path d="M44 62 L18 38" stroke="#ffd23f" strokeWidth="11" strokeLinecap="round" />
+                  <path d="M76 62 L102 38" stroke="#ffd23f" strokeWidth="11" strokeLinecap="round" />
+                  <path d="M10 30c5-4 13-4 16 2 2 4 1 9-3 12-2 5-8 6-12 3-5-3-7-9-4-14 1-1 2-2 3-3z" fill="#ff2d55" />
+                  <path d="M22 32c3 2 4 6 2 10-1 3-4 5-7 5 4 1 9-1 11-5 2-5 0-10-6-10z" fill="#d61f45" />
+                  <rect x="11" y="40" width="13" height="4" rx="2" fill="#ffffff" transform="rotate(-42 17 42)" />
+                  <path d="M110 30c-5-4-13-4-16 2-2 4-1 9 3 12 2 5 8 6 12 3 5-3 7-9 4-14-1-1-2-2-3-3z" fill="#ff2d55" />
+                  <path d="M98 32c-3 2-4 6-2 10 1 3 4 5 7 5-4 1-9-1-11-5-2-5 0-10 6-10z" fill="#d61f45" />
+                  <rect x="96" y="40" width="13" height="4" rx="2" fill="#ffffff" transform="rotate(42 103 42)" />
+                  <rect x="45" y="108" width="11" height="28" rx="4" fill="#ffd23f" />
+                  <rect x="64" y="108" width="11" height="28" rx="4" fill="#ffd23f" />
+                  <rect x="45" y="116" width="11" height="4" fill="#1f2937" />
+                  <rect x="64" y="116" width="11" height="4" fill="#1f2937" />
+                  <path d="M42 134h17v7a3 3 0 0 1-3 3H42z" fill="#15171c" />
+                  <path d="M61 134h17v10H64a3 3 0 0 1-3-3z" fill="#15171c" />
+                  <path d="M38 92h44l-4 20H42z" fill="#1f2937" />
+                  <path d="M60 92h22l-4 20H60z" fill="#161d29" />
+                  <path d="M36 60c0-8 10-12 24-12s24 4 24 12v34H36z" fill="#ffd23f" />
+                  <path d="M60 48c0 0 24 4 24 12v34H60z" fill="#f0b81f" />
+                  <path d="M51 50c2 5 5 8 9 8s7-3 9-8l-4-1c-1 3-3 4-5 4s-4-1-5-4z" fill="#1f2937" />
+                  <path d="M58 68l6-2v22h-5V72l-3 1z" fill="#1f2937" />
+                  <rect x="54" y="44" width="12" height="9" fill="#e3ad84" />
+                  <ellipse cx="60" cy="30" rx="17" ry="18" fill="#f0c19a" />
+                  <path d="M60 12a18 18 0 0 1 0 36c7-3 11-10 11-18s-4-15-11-18z" fill="#e3ad84" />
+                  <ellipse cx="43" cy="32" rx="3" ry="4" fill="#f0c19a" />
+                  <ellipse cx="77" cy="32" rx="3" ry="4" fill="#e3ad84" />
+                  <path d="M42 28c-1-13 8-21 18-21s19 8 18 21c-2-5-5-8-5-8-3 3-7 4-13 4s-10-1-13-4c0 0-3 3-5 8z" fill="#2c2620" />
+                  <path d="M50 24l6 2M70 24l-6 2" stroke="#2c2620" strokeWidth="2" strokeLinecap="round" />
+                  <ellipse cx="53" cy="31" rx="2" ry="2.6" fill="#2c2620" />
+                  <ellipse cx="67" cy="31" rx="2" ry="2.6" fill="#2c2620" />
+                  <path d="M55 40q5 3 10 0" stroke="#b5785a" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+                </svg>
+                <img src="/portero.png" alt="portero" draggable={false}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  className="pointer-events-none select-none"
+                  style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: "82px", height: "auto" }} />
+              </div>
             </div>
           </div>
 
