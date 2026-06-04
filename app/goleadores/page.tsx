@@ -14,10 +14,11 @@ export default async function GoleadoresPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, myPtsRes, playersRes, teamsRes, ssRes, cfgRes, firstRes] = await Promise.all([
+  const [profileRes, myPtsRes, players1Res, players2Res, teamsRes, ssRes, cfgRes, firstRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
-    supabase.from("players").select("id,full_name,position,team_id"),
+    supabase.from("players").select("id,full_name,position,team_id").order("full_name").range(0, 999),
+    supabase.from("players").select("id,full_name,position,team_id").order("full_name").range(1000, 1999),
     supabase.from("teams").select("id,name,flag_url"),
     supabase.from("selected_scorers").select("player_id,slot").eq("user_id", user.id).order("slot"),
     supabase.from("tournament_config").select("group_stage_starts_at").eq("id", 1).maybeSingle(),
@@ -28,7 +29,7 @@ export default async function GoleadoresPage() {
   const points = Number(myPtsRes.data ?? 0);
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
-  const playersRaw = (playersRes.data ?? []) as PlayerRow[];
+  const playersRaw = ([...(players1Res.data ?? []), ...(players2Res.data ?? [])]) as PlayerRow[];
 
   const players: PlayerVM[] = playersRaw
     .map((p) => {
