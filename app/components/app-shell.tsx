@@ -24,6 +24,11 @@ const MOBILE = [
 ];
 const active = (p: string, h: string) => (h === "/dashboard" ? p === "/dashboard" : p.startsWith(h));
 
+async function doSignOut() {
+  try { await createClient().auth.signOut(); } catch {}
+  window.location.href = "/login";
+}
+
 export default function AppShell({
   userName, points, children,
 }: { userName: string; points: number; children: React.ReactNode }) {
@@ -31,18 +36,25 @@ export default function AppShell({
   const initial = userName.charAt(0).toUpperCase();
 
   const [status, setStatus] = useState<"loading" | "paid" | "unpaid">("loading");
+  const [onboarded, setOnboarded] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setStatus("paid"); return; } // sin sesión, deja pasar (la página ya redirige)
+      if (!user) { setStatus("paid"); return; }
       setUserId(user.id);
-      const { data } = await supabase.from("profiles").select("has_paid").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("has_paid,onboarded").eq("id", user.id).single();
+      setOnboarded(Boolean(data?.onboarded));
       setStatus(data?.has_paid ? "paid" : "unpaid");
     })();
   }, []);
+
+  const closeOnboarding = async () => {
+    setOnboarded(true);
+    if (userId) { try { await createClient().from("profiles").update({ onboarded: true }).eq("id", userId); } catch {} }
+  };
 
   if (status === "loading") {
     return (
@@ -52,18 +64,15 @@ export default function AppShell({
     );
   }
 
+  const onboarding = !onboarded ? <Onboarding onClose={closeOnboarding} /> : null;
+
   if (status === "unpaid") {
-    return (
-      <>
-        <Onboarding />
-        <PaymentGate userId={userId} onPaid={() => setStatus("paid")} />
-      </>
-    );
+    return (<>{onboarding}<PaymentGate userId={userId} onPaid={() => setStatus("paid")} /></>);
   }
 
   return (
     <div className="mx-auto grid min-h-dvh max-w-[1240px] lg:grid-cols-[248px_1fr]">
-      <Onboarding />
+      {onboarding}
 
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-[var(--border)] bg-white px-4 py-5 lg:flex">
         <Link href="/dashboard" className="flex flex-col items-center border-b border-[var(--border)] pb-4 text-center">
@@ -86,14 +95,20 @@ export default function AppShell({
           })}
         </nav>
 
-        <Link href="/perfil" className="mt-auto flex items-center gap-3 rounded-2xl border border-[var(--border)] p-2.5">
-          <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--text)] text-sm font-extrabold text-white">{initial}</span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-extrabold">{userName}</span>
-            <span className="block text-[11px] text-[var(--text-dim)]">Rango: <b className="text-[var(--accent)]">Novato</b></span>
-            <span className="block text-sm font-extrabold">{points} <span className="text-[11px] font-bold text-[var(--text-dim)]">pts</span></span>
-          </span>
-        </Link>
+        <div className="mt-auto flex flex-col gap-2">
+          <Link href="/perfil" className="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-2.5">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--text)] text-sm font-extrabold text-white">{initial}</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-extrabold">{userName}</span>
+              <span className="block text-[11px] text-[var(--text-dim)]">Rango: <b className="text-[var(--accent)]">Novato</b></span>
+              <span className="block text-sm font-extrabold">{points} <span className="text-[11px] font-bold text-[var(--text-dim)]">pts</span></span>
+            </span>
+          </Link>
+          <button onClick={doSignOut}
+            className="flex items-center justify-center gap-2 rounded-xl py-2 text-[13px] font-bold text-[var(--text-dim)] transition hover:bg-[var(--soft)] hover:text-[var(--accent-deep)]">
+            <span>⎋</span> Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       <div className="min-w-0">
@@ -103,6 +118,9 @@ export default function AppShell({
             <img src="/logo-icon.svg" alt="" className="h-8 w-8" />
             <span className="text-sm font-extrabold tracking-tight">LA PORRA <span className="text-[var(--text-dim)]">DE SANTIAGO</span></span>
           </Link>
+          <button onClick={doSignOut} className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-[var(--text-dim)] active:bg-[var(--soft)]">
+            ⎋ Salir
+          </button>
         </div>
         <div className="px-4 pb-28 pt-5 lg:px-7 lg:pb-10">{children}</div>
       </div>
@@ -123,12 +141,8 @@ export default function AppShell({
   );
 }
 
-/* ---------- Popup de bienvenida (cómo funciona) ---------- */
-function Onboarding() {
-  const [show, setShow] = useState(false);
-  useEffect(() => { try { if (!localStorage.getItem("porra_onboarded")) setShow(true); } catch {} }, []);
-  if (!show) return null;
-  const close = () => { try { localStorage.setItem("porra_onboarded", "1"); } catch {} setShow(false); };
+/* ---------- Popup de bienvenida (una vez por usuario) ---------- */
+function Onboarding({ onClose }: { onClose: () => void }) {
   const steps = [
     { icon: "⚽", t: "Pronostica los partidos", d: "Marca el resultado exacto. 3 puntos si lo clavas, 1 si aciertas el ganador." },
     { icon: "👑", t: "Orden de grupos y goleadores", d: "Ordena cada grupo y elige tus 3 goleadores para sumar puntos extra." },
@@ -148,13 +162,13 @@ function Onboarding() {
             </div>
           ))}
         </div>
-        <button onClick={close} className="mt-6 w-full rounded-xl bg-[var(--accent)] py-3 text-base font-bold text-white transition hover:bg-[var(--accent-deep)]">¡Vamos! 🚀</button>
+        <button onClick={onClose} className="mt-6 w-full rounded-xl bg-[var(--accent)] py-3 text-base font-bold text-white transition hover:bg-[var(--accent-deep)]">¡Vamos! 🚀</button>
       </div>
     </div>
   );
 }
 
-/* ---------- Pantalla de Bizum (bloqueo) ---------- */
+/* ---------- Pantalla de Bizum (bloqueo, una vez) ---------- */
 function PaymentGate({ userId, onPaid }: { userId: string | null; onPaid: () => void }) {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -164,15 +178,11 @@ function PaymentGate({ userId, onPaid }: { userId: string | null; onPaid: () => 
     if (!userId) return;
     setPending(true); setError(null);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("profiles").update({ has_paid: true }).eq("id", userId);
+      const { error } = await createClient().from("profiles").update({ has_paid: true }).eq("id", userId);
       if (error) { setError(error.message); setPending(false); return; }
       onPaid();
-    } catch (e) {
-      setError("No se pudo guardar, inténtalo de nuevo"); setPending(false);
-    }
+    } catch { setError("No se pudo guardar, inténtalo de nuevo"); setPending(false); }
   };
-
   const copy = async () => {
     try { await navigator.clipboard.writeText(BIZUM.replace(/\s/g, "")); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   };
@@ -185,14 +195,11 @@ function PaymentGate({ userId, onPaid }: { userId: string | null; onPaid: () => 
       <p className="mt-2 text-sm text-[var(--text-dim)]">
         Para participar, haz un <b className="text-[var(--text)]">Bizum</b> a este número. Cuando lo hayas hecho, pulsa el botón de abajo.
       </p>
-
-      <button onClick={copy}
-        className="mt-5 w-full rounded-2xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-5">
+      <button onClick={copy} className="mt-5 w-full rounded-2xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-5">
         <div className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--accent-deep)]">Bizum a</div>
         <div className="mt-1 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">{BIZUM}</div>
         <div className="mt-1 text-[11px] font-bold text-[var(--text-dim)]">{copied ? "¡Copiado! ✓" : "Toca para copiar"}</div>
       </button>
-
       <button onClick={confirm} disabled={pending}
         className="mt-5 w-full rounded-xl bg-[var(--accent)] py-3.5 text-base font-extrabold text-white transition active:scale-95 disabled:opacity-50">
         {pending ? "Un momento…" : "✅ Ya he hecho el Bizum"}
@@ -201,6 +208,9 @@ function PaymentGate({ userId, onPaid }: { userId: string | null; onPaid: () => 
       <p className="mt-4 text-[11px] text-[var(--text-dim)]">
         Lo comprobaremos manualmente. Si marcas esto sin haber pagado… el karma futbolístico te lo hará pagar. 😉
       </p>
+      <button onClick={doSignOut} className="mt-5 text-[13px] font-bold text-[var(--text-dim)] underline-offset-2 hover:underline">
+        Cerrar sesión
+      </button>
     </div>
   );
 }
