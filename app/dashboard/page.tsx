@@ -71,8 +71,8 @@ export default async function DashboardPage() {
             <h1 className="font-[family-name:var(--font-display)] text-4xl font-extrabold leading-[0.98] tracking-tight sm:text-5xl">
               Predice.<br />Compite.<br /><span className="text-[var(--accent)]">Gana.</span>
             </h1>
-            <p className="mt-3.5 max-w-xs font-semibold text-[var(--text-dim)]">
-              Demuestra que sabes más fútbol que tus amigos.
+            <p className="mt-3.5 max-w-sm font-semibold text-[var(--text-dim)]">
+              En Santiago todos sabéis más que el seleccionador. La porra dirá quién es el crack… y quién el cuñao.
             </p>
             <div className="mt-6 text-[11px] font-extrabold tracking-[0.14em] text-[var(--text-dim)]">
               FALTA PARA EL MUNDIAL 2026
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-8 border-t border-[var(--border)] pt-5 text-xs font-semibold text-[var(--text-dim)]">
-        © 2026 La Porra de Santiago · Todos los derechos reservados
+        © 2026 La Porra de Santiago · Todos los derechos pertenecen al puto amo de Carmelo García 👑
       </div>
     </AppShell>
   );
