@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Avatar from "../components/avatar";
+import Icon from "../components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,9 @@ type LbRow = {
 };
 
 const PODIUM = [
-  { h: 86, c: "#c0c5cd", medal: "🥈" },
-  { h: 116, c: "var(--accent)", medal: "🥇" },
-  { h: 66, c: "#d59a5f", medal: "🥉" },
+  { h: 86, c: "#c0c5cd", pos: "2" },
+  { h: 116, c: "var(--accent)", pos: "1" },
+  { h: 66, c: "#d59a5f", pos: "3" },
 ];
 
 export default async function RankingPage() {
@@ -55,7 +56,7 @@ export default async function RankingPage() {
                 <Avatar src={p.avatar_url} name={p.display_name} className="mx-auto mb-2 h-14 w-14" textClass="text-lg" />
                 <div className="grid place-items-start justify-center rounded-t-2xl pt-2.5 font-[family-name:var(--font-display)] text-xl font-extrabold text-white"
                   style={{ height: PODIUM[i].h, background: PODIUM[i].c }}>
-                  {PODIUM[i].medal}
+                  {PODIUM[i].pos}
                 </div>
                 <div className="mt-2 truncate text-sm font-bold">{p.display_name}</div>
                 <div className="text-xs text-[var(--text-dim)]">{p.total_points} pts</div>
@@ -67,7 +68,7 @@ export default async function RankingPage() {
         </div>
       ) : (
         <div className="mt-5 rounded-2xl bg-[var(--soft)] p-6 text-center">
-          <div className="text-3xl">🏆</div>
+          <div className="mx-auto mb-1 grid h-12 w-12 place-items-center rounded-full bg-white text-[var(--text-dim)]"><Icon name="trophy" className="h-6 w-6" /></div>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-lg font-extrabold">Todo por decidir</h2>
           <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--text-dim)]">
             El ranking se llena en cuanto terminen los primeros partidos del Mundial.

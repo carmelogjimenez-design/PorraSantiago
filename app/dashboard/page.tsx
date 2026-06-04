@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Avatar from "../components/avatar";
+import Icon from "../components/icons";
 import Countdown from "./countdown";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ type GroupRow = { id: number; label: string };
 type LbRow = { user_id: string; display_name: string; avatar_url: string | null; total_points: number | string };
 
 const abbr = (n: string) => n.slice(0, 3).toUpperCase();
+const POS = ["#f5b301", "#c0c5cd", "#d59a5f"];
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -52,11 +54,9 @@ export default async function DashboardPage() {
 
   const R = 19, C = 2 * Math.PI * R;
   const offset = C - (pct / 100) * C;
-  const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <AppShell userName={name} points={points}>
-
       <div className="mb-5 flex items-center justify-between">
         <div className="text-sm font-extrabold tracking-wide">
           <span className="text-[var(--accent)]">MUNDIAL 2026</span>
@@ -67,6 +67,7 @@ export default async function DashboardPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_326px]">
         <div className="min-w-0">
           <section className="rise relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--soft)] p-8">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-[var(--accent)] opacity-[0.06] blur-2xl" />
             <h1 className="font-[family-name:var(--font-display)] text-4xl font-extrabold leading-[0.98] tracking-tight sm:text-5xl">
               Predice.<br />Compite.<br /><span className="text-[var(--accent)]">Gana.</span>
             </h1>
@@ -83,10 +84,10 @@ export default async function DashboardPage() {
 
           <h2 className="mb-3 mt-6 text-[13px] font-extrabold tracking-[0.06em]">TU JUEGO</h2>
           <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <GameCard href="/grupos" color="accent" icon="⚽" title="FASE DE GRUPOS" sub={`${total - done} partidos sin pronosticar`} />
-            <GameCard href="/orden" color="amber" icon="👑" title="ORDEN DE GRUPOS" sub="Predice 1º y 2º de cada grupo" />
-            <GameCard href="/goleadores" color="green" icon="🎯" title="GOLEADORES" sub="Elige tus 3 cracks" />
-            <GameCard href="/ranking" color="purple" icon="🏆" title="RANKING" sub="A por el oro · ¿Quién manda aquí?" />
+            <GameCard href="/grupos" color="accent" icon="ball" title="FASE DE GRUPOS" sub={`${total - done} partidos sin pronosticar`} />
+            <GameCard href="/orden" color="amber" icon="grid" title="ORDEN DE GRUPOS" sub="Predice 1º y 2º de cada grupo" />
+            <GameCard href="/goleadores" color="green" icon="target" title="GOLEADORES" sub="Elige tus 3 cracks" />
+            <GameCard href="/ranking" color="purple" icon="trophy" title="RANKING" sub="A por el oro · ¿Quién manda aquí?" />
           </div>
 
           <div className="mt-7 flex items-center justify-between">
@@ -126,8 +127,10 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <Link href="/ranking" className="card flex items-center gap-3.5 p-4">
-            <span className="grid h-[46px] w-[46px] flex-none place-items-center rounded-xl bg-[var(--accent-soft)] text-xl">🏆</span>
+          <Link href="/ranking" className="card flex items-center gap-3.5 p-4 transition hover:border-[var(--accent)]">
+            <span className="grid h-[46px] w-[46px] flex-none place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
+              <Icon name="trophy" className="h-6 w-6" />
+            </span>
             <div className="flex-1">
               <div className="text-2xl font-extrabold leading-none">{points} <span className="text-sm font-bold text-[var(--text-dim)]">pts</span></div>
               <div className="mt-1 text-[10px] font-extrabold tracking-[0.08em] text-[var(--text-dim)]">
@@ -145,16 +148,21 @@ export default async function DashboardPage() {
             {topHasPoints ? (
               top3.map((r, i) => (
                 <div key={r.user_id} className={`flex items-center gap-2.5 py-1.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
-                  <span className="text-base">{medals[i]}</span>
+                  <span className="grid h-5 w-5 flex-none place-items-center rounded-full text-[10px] font-extrabold text-white" style={{ background: POS[i] }}>{i + 1}</span>
                   <Avatar src={r.avatar_url} name={r.display_name} className="h-7 w-7" textClass="text-[11px]" />
                   <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{r.display_name}</span>
                   <span className="text-[13px] font-extrabold text-[var(--accent)]">{r.total_points} pts</span>
                 </div>
               ))
             ) : (
-              <p className="py-3 text-center text-[13px] font-semibold text-[var(--text-dim)]">
-                Aún sin clasificación.<br />Empieza cuando ruede el balón ⚽
-              </p>
+              <div className="flex flex-col items-center py-4 text-center">
+                <span className="mb-2 grid h-11 w-11 place-items-center rounded-full bg-[var(--soft)] text-[var(--text-dim)]">
+                  <Icon name="trophy" className="h-5 w-5" />
+                </span>
+                <p className="text-[13px] font-semibold text-[var(--text-dim)]">
+                  Aún sin clasificación.<br />Empieza cuando ruede el balón.
+                </p>
+              </div>
             )}
           </div>
 
@@ -210,9 +218,12 @@ function GameCard({ href, color, icon, title, sub }:
     purple: { b: "var(--purple)", bg: "var(--purple-soft)" },
   }[color];
   return (
-    <Link href={href} className="card relative p-5 transition active:scale-[0.98]" style={{ borderBottomWidth: 4, borderBottomColor: map.b }}>
-      <span className="absolute right-4 top-4 text-[var(--text-dim)]">›</span>
-      <span className="mb-6 grid h-14 w-14 place-items-center rounded-2xl text-2xl" style={{ background: map.bg }}>{icon}</span>
+    <Link href={href} className="card group relative p-5 transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18)] active:scale-[0.98]"
+      style={{ borderBottomWidth: 4, borderBottomColor: map.b }}>
+      <span className="absolute right-4 top-4 text-[var(--text-dim)] transition group-hover:translate-x-0.5">›</span>
+      <span className="mb-6 grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-105" style={{ background: map.bg, color: map.b }}>
+        <Icon name={icon} className="h-7 w-7" />
+      </span>
       <div className="font-[family-name:var(--font-display)] text-base font-extrabold tracking-wide">{title}</div>
       <div className="mt-1 text-[13px] font-semibold text-[var(--text-dim)]">{sub}</div>
     </Link>
