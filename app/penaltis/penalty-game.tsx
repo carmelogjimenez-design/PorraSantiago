@@ -7,6 +7,8 @@ import Avatar from "../components/avatar";
 type Rank = { display_name: string; avatar_url: string | null; best: number };
 const SHOTS = 5;
 const POS = ["#f5b301", "#c0c5cd", "#d59a5f"];
+const ZONE_X = [18, 50, 82];
+const ZONE_Y = [32, 68];
 
 export default function PenaltyGame({ initialRanking, initialBest }: { initialRanking: Rank[]; initialBest: number }) {
   const [phase, setPhase] = useState<"play" | "over">("play");
@@ -62,6 +64,10 @@ export default function PenaltyGame({ initialRanking, initialBest }: { initialRa
     setFlash(null);
   };
 
+  const gkX = animating && keeperZone != null ? ZONE_X[keeperZone % 3] : 50;
+  const gkY = animating && keeperZone != null ? ZONE_Y[Math.floor(keeperZone / 3)] : 30;
+  const tilt = animating && keeperZone != null ? (keeperZone % 3 === 0 ? -22 : keeperZone % 3 === 2 ? 22 : 0) : 0;
+
   return (
     <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_300px]">
       <div>
@@ -83,14 +89,27 @@ export default function PenaltyGame({ initialRanking, initialBest }: { initialRa
 
         {/* Portería */}
         <div className="relative overflow-hidden rounded-2xl border-2 border-[var(--border)] bg-gradient-to-b from-[#eef2f6] to-[#e3e9f0] p-3">
-          <div className="relative grid grid-cols-3 grid-rows-2 gap-2" style={{ aspectRatio: "3 / 2" }}>
-            {Array.from({ length: 6 }).map((_, z) => (
-              <button key={z} onClick={() => shoot(z)} disabled={animating || phase === "over"}
-                className="relative grid place-items-center rounded-xl border border-dashed border-[var(--border)] bg-white/40 text-3xl transition active:scale-95 disabled:cursor-default hover:bg-white/70">
-                {ballZone === z && <span className="pop">⚽</span>}
-                {keeperZone === z && <span className="pop absolute text-4xl">🧤</span>}
-              </button>
-            ))}
+          <div className="relative" style={{ aspectRatio: "3 / 2" }}>
+            {/* zonas clicables */}
+            <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-2">
+              {Array.from({ length: 6 }).map((_, z) => (
+                <button key={z} onClick={() => shoot(z)} disabled={animating || phase === "over"}
+                  className="rounded-xl border border-dashed border-[var(--border)] bg-white/40 transition active:scale-95 hover:bg-white/70 disabled:cursor-default" />
+              ))}
+            </div>
+
+            {/* balón */}
+            {ballZone != null && (
+              <div className="pop pointer-events-none absolute text-3xl"
+                style={{ left: `${ZONE_X[ballZone % 3]}%`, top: `${ZONE_Y[Math.floor(ballZone / 3)]}%`, transform: "translate(-50%,-50%)" }}>⚽</div>
+            )}
+
+            {/* portero que se mueve y se estira */}
+            <div className="pointer-events-none absolute"
+              style={{ left: `${gkX}%`, top: `${gkY}%`, transform: "translate(-50%,-50%)", transition: "left .45s cubic-bezier(.34,1.56,.64,1), top .45s cubic-bezier(.34,1.56,.64,1)" }}>
+              <div className="text-4xl"
+                style={{ transition: "transform .45s", transform: animating ? `rotate(${tilt}deg) scale(1.15)` : "rotate(0deg) scale(1)", animation: !animating && phase === "play" ? "gkSway 1.4s ease-in-out infinite" : "none" }}>🧤</div>
+            </div>
           </div>
 
           {flash && (
@@ -101,10 +120,7 @@ export default function PenaltyGame({ initialRanking, initialBest }: { initialRa
             </div>
           )}
 
-          {/* Portero "en reposo" cuando no hay animación y se está jugando */}
-          {!animating && phase === "play" && (
-            <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-4xl opacity-90">🧤</div>
-          )}
+          <style>{`@keyframes gkSway{0%,100%{transform:translateX(-7px)}50%{transform:translateX(7px)}}`}</style>
         </div>
 
         {phase === "play" ? (
