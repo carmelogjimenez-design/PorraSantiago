@@ -73,3 +73,28 @@ export async function saveGoals(playerId: string, goalsOverride: number | null) 
   revalidatePath("/admin/goles");
   return { ok: true };
 }
+
+// Eliminar a un jugador del todo (cuenta + todos sus datos). Irreversible.
+export async function deleteUser(userId: string) {
+  const user = await requireAdmin();
+  if (!user) return { ok: false, error: "No autorizado" };
+  if (userId === user.id) return { ok: false, error: "No puedes eliminarte a ti mismo" };
+
+  const admin = createAdminClient();
+  try {
+    await admin.from("predictions").delete().eq("user_id", userId);
+    await admin.from("group_predictions").delete().eq("user_id", userId);
+    await admin.from("selected_scorers").delete().eq("user_id", userId);
+    await admin.from("penalty_scores").delete().eq("user_id", userId);
+    await admin.from("ranking_snapshots").delete().eq("user_id", userId);
+    await admin.from("profiles").delete().eq("id", userId);
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) return { ok: false, error: error.message };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  revalidatePath("/admin/jugadores");
+  revalidatePath("/admin/estado");
+  return { ok: true };
+}

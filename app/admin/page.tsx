@@ -92,6 +92,16 @@ export default async function AdminPage() {
           </div>
           <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
         </a>
+        <a href="/admin/jugadores" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md sm:col-span-2">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">👥</span>
+            <div>
+              <div className="text-sm font-extrabold">Jugadores</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Gestiona la peña y elimina jugadores.</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
       </div>
     </AppShell>
   );
