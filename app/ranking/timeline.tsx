@@ -156,6 +156,16 @@ export default async function RankingTimeline({ meId }: { meId: string }) {
         </svg>
       </div>
 
+      {/* Leyenda (clave en móvil: el gráfico puede deslizarse y las etiquetas quedan fuera) */}
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
+        {series.map((s) => (
+          <span key={s.id} className="inline-flex items-center gap-1.5 text-[12px] font-bold">
+            <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} />
+            <span className={s.isMe ? "text-[var(--accent)]" : ""}>{s.name}{s.isMe ? " (tú)" : ""}</span>
+          </span>
+        ))}
+      </div>
+
       {/* Récords */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl bg-[var(--soft)] p-3">
