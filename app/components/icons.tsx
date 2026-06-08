@@ -21,6 +21,7 @@ const PATHS: Record<string, React.ReactNode> = {
   goal: (<><path d="M3 7h18v11H3z" /><path d="M7 7v11M11 7v11M15 7v11M3 11h18M3 14.5h18" /></>),
   menu: (<><path d="M4 7h16M4 12h16M4 17h16" /></>),
   eye: (<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>),
+  bulb: (<><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-4 10.5c.6.5 1 1.1 1 2V16h6v-.5c0-.9.4-1.5 1-2A6 6 0 0 0 12 3z" /></>),
   trophy: (
     <>
       <path d="M7 4h10v3.2a5 5 0 0 1-10 0z" />
