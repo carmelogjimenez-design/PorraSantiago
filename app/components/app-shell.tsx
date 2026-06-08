@@ -24,7 +24,12 @@ const MOBILE = [
   { href: "/grupos", label: "Grupos", icon: "ball" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
+];
+const MORE = [
+  { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/premios", label: "Premios", icon: "gift" },
+  { href: "/penaltis", label: "Penaltis", icon: "goal" },
+  { href: "/reglas", label: "Reglas", icon: "book" },
   { href: "/perfil", label: "Perfil", icon: "user" },
 ];
 const active = (p: string, h: string) => (h === "/dashboard" ? p === "/dashboard" : p.startsWith(h));
@@ -43,6 +48,7 @@ export default function AppShell({
   const [onboarded, setOnboarded] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -142,7 +148,37 @@ export default function AppShell({
             </Link>
           );
         })}
+        <button onClick={() => setMoreOpen(true)}
+          className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold ${MORE.some((m) => active(pathname, m.href)) ? "text-[var(--accent)]" : "text-[var(--text-dim)]"}`}>
+          <Icon name="menu" className="h-[22px] w-[22px]" />Más
+        </button>
       </nav>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white p-4 pb-8 shadow-[0_-10px_40px_-12px_rgba(0,0,0,0.3)]"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-[var(--border)]" />
+            <div className="grid grid-cols-1 gap-1">
+              {MORE.map((n) => {
+                const on = active(pathname, n.href);
+                return (
+                  <Link key={n.href} href={n.href} onClick={() => setMoreOpen(false)}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold ${on ? "bg-[var(--accent-soft)] text-[var(--accent-deep)]" : "text-[var(--text)] active:bg-[var(--soft)]"}`}>
+                    <Icon name={n.icon} className="h-5 w-5" />{n.label}
+                  </Link>
+                );
+              })}
+              <button onClick={doSignOut}
+                className="mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-[var(--text-dim)] active:bg-[var(--soft)]">
+                <Icon name="logout" className="h-5 w-5" />Salir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
