@@ -98,3 +98,17 @@ export async function deleteUser(userId: string) {
   revalidatePath("/admin/estado");
   return { ok: true };
 }
+
+// Marcar/desmarcar el pago del Bizum de un jugador (solo admin)
+export async function setPaid(userId: string, paid: boolean) {
+  const user = await requireAdmin();
+  if (!user) return { ok: false, error: "No autorizado" };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ has_paid: paid }).eq("id", userId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin/jugadores");
+  revalidatePath("/admin/estado");
+  return { ok: true };
+}

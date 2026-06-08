@@ -49,6 +49,7 @@ export default function AppShell({
   const [userId, setUserId] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -59,7 +60,9 @@ export default function AppShell({
       const { data } = await supabase.from("profiles").select("has_paid,onboarded,avatar_url").eq("id", user.id).single();
       setOnboarded(Boolean(data?.onboarded));
       setAvatar(data?.avatar_url ?? null);
-      setStatus(data?.has_paid ? "paid" : "unpaid");
+      const unpaid = !data?.has_paid;
+      setStatus(unpaid ? "unpaid" : "paid");
+      if (unpaid) setPayOpen(true);
     })();
   }, []);
 
@@ -78,13 +81,21 @@ export default function AppShell({
 
   const onboarding = !onboarded ? <Onboarding onClose={closeOnboarding} /> : null;
 
-  if (status === "unpaid") {
-    return (<>{onboarding}<PaymentGate userId={userId} onPaid={() => setStatus("paid")} /></>);
-  }
-
   return (
     <div className="mx-auto grid min-h-dvh max-w-[1240px] lg:grid-cols-[248px_1fr]">
       {onboarding}
+
+      {status === "unpaid" && (
+        <>
+          <button onClick={() => setPayOpen(true)}
+            className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-extrabold text-white shadow-lg transition active:scale-95 lg:bottom-6">
+            💸 Pagar Bizum
+          </button>
+          <PaymentReminder open={payOpen} userId={userId}
+            onClose={() => setPayOpen(false)}
+            onPaid={() => { setStatus("paid"); setPayOpen(false); }} />
+        </>
+      )}
 
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-[var(--border)] bg-white px-4 py-5 lg:flex">
         <Link href="/dashboard" className="flex flex-col items-center border-b border-[var(--border)] pb-4 text-center">
@@ -210,49 +221,55 @@ function Onboarding({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ---------- Pantalla de Bizum (bloqueo, una vez) ---------- */
-function PaymentGate({ userId, onPaid }: { userId: string | null; onPaid: () => void }) {
+/* ---------- Aviso de Bizum (no bloquea: puede jugar pero insiste) ---------- */
+function PaymentReminder({ open, userId, onClose, onPaid }: { open: boolean; userId: string | null; onClose: () => void; onPaid: () => void }) {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const confirm = async () => {
+  if (!open) return null;
+
+  const check = async () => {
     if (!userId) return;
     setPending(true); setError(null);
     try {
-      const { error } = await createClient().from("profiles").update({ has_paid: true }).eq("id", userId);
+      const { data, error } = await createClient().from("profiles").select("has_paid").eq("id", userId).single();
       if (error) { setError(error.message); setPending(false); return; }
-      onPaid();
-    } catch { setError("No se pudo guardar, inténtalo de nuevo"); setPending(false); }
+      if (data?.has_paid) { onPaid(); }
+      else { setError("Aún no nos consta tu pago. En cuanto el organizador lo confirme, desaparecerá este aviso. 👍"); setPending(false); }
+    } catch { setError("No se pudo comprobar, inténtalo de nuevo"); setPending(false); }
   };
   const copy = async () => {
     try { await navigator.clipboard.writeText(BIZUM.replace(/\s/g, "")); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-5 text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-icon.svg" alt="" className="h-20 w-[74px]" />
-      <h1 className="mt-4 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">Únete a la porra</h1>
-      <p className="mt-2 text-sm text-[var(--text-dim)]">
-        Para participar, haz un <b className="text-[var(--text)]">Bizum</b> a este número. Cuando lo hayas hecho, pulsa el botón de abajo.
-      </p>
-      <button onClick={copy} className="mt-5 w-full rounded-2xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-5">
-        <div className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--accent-deep)]">Bizum a</div>
-        <div className="mt-1 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">{BIZUM}</div>
-        <div className="mt-1 text-[11px] font-bold text-[var(--text-dim)]">{copied ? "¡Copiado! ✓" : "Toca para copiar"}</div>
-      </button>
-      <button onClick={confirm} disabled={pending}
-        className="mt-5 w-full rounded-xl bg-[var(--accent)] py-3.5 text-base font-extrabold text-white transition active:scale-95 disabled:opacity-50">
-        {pending ? "Un momento…" : "✅ Ya he hecho el Bizum"}
-      </button>
-      {error && <p className="mt-2 text-xs font-bold text-[var(--accent-deep)]">{error}</p>}
-      <p className="mt-4 text-[11px] text-[var(--text-dim)]">
-        Lo comprobaremos manualmente. Si marcas esto sin haber pagado… el karma futbolístico te lo hará pagar. 😉
-      </p>
-      <button onClick={doSignOut} className="mt-5 text-[13px] font-bold text-[var(--text-dim)] underline-offset-2 hover:underline">
-        Cerrar sesión
-      </button>
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 pb-8 text-center shadow-2xl sm:m-4 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon.svg" alt="" className="mx-auto h-20 w-[74px]" />
+        <h1 className="mt-4 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">Te falta el Bizum</h1>
+        <p className="mt-2 text-sm text-[var(--text-dim)]">
+          Puedes ir poniendo tus pronósticos, pero para entrar en la porra haz un <b className="text-[var(--text)]">Bizum</b> a este número. El organizador lo confirmará.
+        </p>
+        <button onClick={copy} className="mt-5 w-full rounded-2xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-5">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--accent-deep)]">Bizum a</div>
+          <div className="mt-1 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">{BIZUM}</div>
+          <div className="mt-1 text-[11px] font-bold text-[var(--text-dim)]">{copied ? "¡Copiado! ✓" : "Toca para copiar"}</div>
+        </button>
+        <button onClick={check} disabled={pending}
+          className="mt-5 w-full rounded-xl bg-[var(--accent)] py-3.5 text-base font-extrabold text-white transition active:scale-95 disabled:opacity-50">
+          {pending ? "Comprobando…" : "Ya he pagado · Comprobar"}
+        </button>
+        {error && <p className="mt-2 text-xs font-bold text-[var(--accent-deep)]">{error}</p>}
+        <p className="mt-4 text-[11px] text-[var(--text-dim)]">
+          El organizador confirma los pagos manualmente. En cuanto lo haga, este aviso desaparece. 😉
+        </p>
+        <button onClick={onClose} className="mt-5 text-[13px] font-bold text-[var(--text-dim)] underline-offset-2 hover:underline">
+          Seguir jugando por ahora
+        </button>
+      </div>
     </div>
   );
 }
