@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteUser } from "./actions";
+import { deleteUser, setPaid } from "./actions";
 
 type Player = { id: string; name: string; paid: boolean };
 
@@ -25,6 +25,18 @@ export default function PlayersAdmin({ players, meId }: { players: Player[]; meI
     }
   };
 
+  const togglePaid = async (id: string, current: boolean) => {
+    setBusy(id);
+    setError(null);
+    const r = await setPaid(id, !current);
+    setBusy(null);
+    if (r?.ok) {
+      setList((l) => l.map((p) => (p.id === id ? { ...p, paid: !current } : p)));
+    } else {
+      setError(r?.error || "No se pudo actualizar el pago");
+    }
+  };
+
   return (
     <div className="mt-5">
       {error && (
@@ -38,15 +50,23 @@ export default function PlayersAdmin({ players, meId }: { players: Player[]; meI
             const isMe = p.id === meId;
             const isConfirming = confirming === p.id;
             return (
-              <div key={p.id} className={`flex items-center gap-3 px-2 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
+              <div key={p.id} className={`flex items-center gap-2 px-2 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
                 <span className="min-w-0 flex-1 truncate text-sm font-bold">
                   {p.name}
                   {isMe && <span className="ml-2 rounded-md bg-[var(--soft)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-[var(--text-dim)]">tú</span>}
-                  {!p.paid && <span className="ml-2 rounded-md bg-[var(--amber-soft)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-[var(--amber)]">sin pagar</span>}
                 </span>
 
+                <button onClick={() => togglePaid(p.id, p.paid)} disabled={busy === p.id}
+                  className={`flex-none rounded-lg px-2.5 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-60 ${
+                    p.paid
+                      ? "bg-[var(--green-soft)] text-[var(--green)]"
+                      : "border border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  }`}>
+                  {busy === p.id ? "…" : p.paid ? "✅ Pagado" : "Marcar pagado"}
+                </button>
+
                 {isMe ? (
-                  <span className="text-[12px] text-[var(--text-dim)]">—</span>
+                  <span className="w-7 text-center text-[12px] text-[var(--text-dim)]">—</span>
                 ) : isConfirming ? (
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold text-[var(--accent-deep)]">¿Seguro?</span>
