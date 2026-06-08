@@ -69,13 +69,16 @@ function PeerPredictions({ matchId, homeScore, awayScore, finished }:
   );
 }
 
-export default function MatchCard({ m }: { m: MatchVM }) {
+export default function MatchCard({ m, lockAt }: { m: MatchVM; lockAt: number }) {
   const [state, action, pending] = useActionState<PredState, FormData>(savePrediction, null);
 
   const kickoff = new Date(m.kickoffAt);
-  const open = m.status === "scheduled" && kickoff.getTime() > Date.now();
+  // Editable solo hasta el pitido inicial del PRIMER partido del Mundial (corte global)
+  const open = m.status === "scheduled" && Date.now() < lockAt;
   const live = m.status === "live";
   const finished = m.status === "finished" && m.homeScore != null && m.awayScore != null;
+  // Los pronósticos de la peña solo se ven cuando ESE partido ya ha empezado
+  const started = live || finished || kickoff.getTime() <= Date.now();
 
   const dateStr = kickoff.toLocaleString("es-ES", {
     timeZone: "Europe/Madrid", weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
@@ -153,7 +156,7 @@ export default function MatchCard({ m }: { m: MatchVM }) {
               </span>
             )}
           </div>
-          <PeerPredictions matchId={m.id} homeScore={m.homeScore} awayScore={m.awayScore} finished={finished} />
+          {started && <PeerPredictions matchId={m.id} homeScore={m.homeScore} awayScore={m.awayScore} finished={finished} />}
         </>
       )}
     </div>
