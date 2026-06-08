@@ -13,6 +13,7 @@ const NAV = [
   { href: "/dashboard", label: "Inicio", icon: "home" },
   { href: "/grupos", label: "Fase de grupos", icon: "ball" },
   { href: "/orden", label: "Orden de grupos", icon: "grid" },
+  { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
   { href: "/premios", label: "Premios", icon: "gift" },
@@ -26,6 +27,7 @@ const MOBILE = [
   { href: "/ranking", label: "Ranking", icon: "trophy" },
 ];
 const MORE = [
+  { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/penaltis", label: "Penaltis", icon: "goal" },
