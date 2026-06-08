@@ -62,6 +62,15 @@ export default async function OrdenPage() {
     standings.set(g.id, { rows, predicted, total: gmatches.length });
   }
 
+  // Los 8 mejores terceros (entre los 12 grupos) según tus pronósticos
+  const thirds: { groupId: number; r: Row }[] = [];
+  for (const g of groups) {
+    const s = standings.get(g.id);
+    if (s && s.rows[2]) thirds.push({ groupId: g.id, r: s.rows[2] });
+  }
+  thirds.sort((a, b) => b.r.pts - a.r.pts || b.r.dg - a.r.dg || b.r.gf - a.r.gf || a.r.name.localeCompare(b.r.name));
+  const bestThirdGroups = new Set(thirds.slice(0, 8).map((t) => t.groupId));
+
   return (
     <AppShell userName={name} points={points}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Orden de grupos</h1>
@@ -92,7 +101,7 @@ export default async function OrdenPage() {
 
             <div className="card overflow-hidden p-0">
               {s.rows.map((r, idx) => {
-                const zone = idx < 2 ? "bg-[var(--green-soft)]" : idx === 2 ? "bg-[var(--amber-soft)]" : "";
+                const zone = idx < 2 ? "bg-[var(--green-soft)]" : idx === 2 && bestThirdGroups.has(g.id) ? "bg-[var(--amber-soft)]" : "";
                 return (
                   <div key={r.name} className={`flex items-center gap-3 px-3 py-2.5 ${idx > 0 ? "border-t border-[var(--border)]" : ""} ${zone}`}>
                     <span
@@ -112,7 +121,7 @@ export default async function OrdenPage() {
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[10px] text-[var(--text-dim)]">
               <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[var(--green-soft)] align-middle" />1º y 2º: pasan</span>
-              <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[var(--amber-soft)] align-middle" />3º: posible mejor tercero</span>
+              <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[var(--amber-soft)] align-middle" />3º entre tus 8 mejores: pasa</span>
             </div>
           </section>
         );
