@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 type Row = { taken_at: string; user_id: string; display_name: string; rank: number; points: number };
 
 const COLORS = ["#ff2d55", "#f5b301", "#16a34a", "#7c3aed", "#0ea5e9", "#e0224a"];
+const POS = ["#f5b301", "#9aa3af", "#cd7f32"]; // oro, plata, bronce
 const TOP_N = 6;
 
 export default async function RankingTimeline({ meId }: { meId: string }) {
@@ -25,8 +26,8 @@ export default async function RankingTimeline({ meId }: { meId: string }) {
   if (days.length === 0) {
     return (
       <div className="card mt-5 p-6 text-center">
-        <div className="mb-2 text-3xl">🎬</div>
-        <div className="font-[family-name:var(--font-display)] text-lg font-extrabold">La película de la porra</div>
+        <div className="mb-2 text-3xl">📊</div>
+        <div className="font-[family-name:var(--font-display)] text-lg font-extrabold">Top 6 de la porra</div>
         <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--text-dim)]">
           Aquí verás quién manda, quién remonta y quién se hunde día a día. Arranca cuando ruede el balón (11 jun). 🍿
         </p>
@@ -46,6 +47,7 @@ export default async function RankingTimeline({ meId }: { meId: string }) {
     name: lastUM.get(id)?.name ?? "Jugador",
     color: COLORS[i % COLORS.length],
     isMe: id === meId,
+    points: lastUM.get(id)?.points ?? 0,
     ranks: days.map((d) => byDay.get(d)!.get(id)?.rank ?? null),
   }));
 
@@ -79,8 +81,8 @@ export default async function RankingTimeline({ meId }: { meId: string }) {
   if (days.length < 2) {
     return (
       <div className="card mt-5 p-6 text-center">
-        <div className="mb-2 text-3xl">🎬</div>
-        <div className="font-[family-name:var(--font-display)] text-lg font-extrabold">La película de la porra</div>
+        <div className="mb-2 text-3xl">📊</div>
+        <div className="font-[family-name:var(--font-display)] text-lg font-extrabold">Top 6 de la porra</div>
         <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--text-dim)]">
           Primer día en marcha. Vuelve mañana y empezarás a ver cómo sube y baja la peña. 📈
         </p>
@@ -93,77 +95,46 @@ export default async function RankingTimeline({ meId }: { meId: string }) {
     );
   }
 
-  // --- Geometría del bump chart ---
-  const maxRank = Math.max(...series.flatMap((s) => s.ranks.filter((r): r is number => r != null)), N);
-  const colW = days.length > 8 ? 38 : 52;
-  const rowH = 26;
-  const leftM = 34;
-  const topM = 16;
-  const labelW = 96;
-  const W = leftM + (days.length - 1) * colW + labelW;
-  const H = topM + (maxRank - 1) * rowH + 28;
-  const x = (i: number) => leftM + i * colW;
-  const y = (rank: number) => topM + (rank - 1) * rowH;
-
-  // Etiquetas de día (DD/MM); si hay muchos, una de cada dos
-  const dayStep = days.length > 9 ? 2 : 1;
+  // --- Puntos actuales (último día) para las barras ---
+  const maxPoints = Math.max(...series.map((s) => s.points), 1);
 
   return (
     <div className="card mt-5 p-4 sm:p-5">
+      <style>{`@keyframes pbgrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
       <div className="mb-1 flex items-center gap-2">
-        <span className="text-lg">🎬</span>
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">La película de la porra</h2>
+        <span className="text-lg">📊</span>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Top {N} de la porra</h2>
       </div>
-      <p className="mb-3 text-[13px] text-[var(--text-dim)]">Evolución del top {N} día a día. Tu línea va resaltada.</p>
+      <p className="mb-4 text-[13px] text-[var(--text-dim)]">Quién manda ahora mismo. Tu barra va resaltada.</p>
 
-      <div className="-mx-1 overflow-x-auto pb-1">
-        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="max-w-none" role="img" aria-label="Evolución del ranking">
-          {/* Líneas guía + posiciones en el eje Y */}
-          {Array.from({ length: maxRank }, (_, k) => k + 1).map((rk) => (
-            <g key={`row-${rk}`}>
-              <line x1={leftM} y1={y(rk)} x2={leftM + (days.length - 1) * colW} y2={y(rk)} stroke="var(--border)" strokeWidth={1} />
-              <text x={leftM - 10} y={y(rk) + 4} textAnchor="end" fontSize={11} fontWeight={700} fill="var(--text-dim)">{rk}º</text>
-            </g>
-          ))}
-          {/* Etiquetas de día */}
-          {days.map((d, i) =>
-            i % dayStep === 0 ? (
-              <text key={`d-${d}`} x={x(i)} y={H - 8} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-dim)">
-                {d.slice(8, 10)}/{d.slice(5, 7)}
-              </text>
-            ) : null
-          )}
-          {/* Líneas de cada jugador (las del resto primero, la tuya encima) */}
-          {[...series].sort((a, b) => Number(a.isMe) - Number(b.isMe)).map((s) => {
-            const pts: Array<[number, number]> = [];
-            s.ranks.forEach((rk, i) => { if (rk != null) pts.push([x(i), y(rk)]); });
-            if (pts.length === 0) return null;
-            const path = pts.map((p) => p.join(",")).join(" ");
-            const lastPt = pts[pts.length - 1];
-            const sw = s.isMe ? 4 : 2.5;
-            return (
-              <g key={s.id}>
-                <polyline points={path} fill="none" stroke={s.color} strokeWidth={sw} strokeLinejoin="round" strokeLinecap="round" opacity={s.isMe ? 1 : 0.85} />
-                {pts.map((p, idx) => (
-                  <circle key={idx} cx={p[0]} cy={p[1]} r={s.isMe ? 4 : 3} fill="#fff" stroke={s.color} strokeWidth={s.isMe ? 3 : 2} />
-                ))}
-                <text x={lastPt[0] + 8} y={lastPt[1] + 4} fontSize={11} fontWeight={s.isMe ? 800 : 700} fill={s.color}>
-                  {s.name.length > 12 ? s.name.slice(0, 11) + "…" : s.name}{s.isMe ? " (tú)" : ""}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Leyenda (clave en móvil: el gráfico puede deslizarse y las etiquetas quedan fuera) */}
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
-        {series.map((s) => (
-          <span key={s.id} className="inline-flex items-center gap-1.5 text-[12px] font-bold">
-            <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} />
-            <span className={s.isMe ? "text-[var(--accent)]" : ""}>{s.name}{s.isMe ? " (tú)" : ""}</span>
-          </span>
-        ))}
+      <div className="space-y-2.5">
+        {series.map((s, i) => {
+          const pct = s.points > 0 ? Math.max((s.points / maxPoints) * 100, 6) : 0;
+          const barColor = s.isMe ? "var(--accent)" : i < 3 ? POS[i] : "var(--text-dim)";
+          return (
+            <div key={s.id} className={`flex items-center gap-3 rounded-xl p-2 ${s.isMe ? "bg-[var(--accent-soft)]" : ""}`}>
+              <span
+                className={`grid h-7 w-7 flex-none place-items-center rounded-full text-xs font-extrabold ${i < 3 ? "text-white" : "bg-[var(--soft)] text-[var(--text-dim)]"}`}
+                style={i < 3 ? { background: POS[i] } : undefined}>
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className={`truncate text-sm font-bold ${s.isMe ? "text-[var(--accent-deep)]" : ""}`}>
+                    {s.name}{s.isMe ? " (tú)" : ""}
+                  </span>
+                  <span className="flex-none font-[family-name:var(--font-display)] text-sm font-extrabold">
+                    {s.points}<span className="ml-0.5 text-[10px] font-bold text-[var(--text-dim)]">pts</span>
+                  </span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--soft)]">
+                  <div className="h-full rounded-full"
+                    style={{ width: `${pct}%`, background: barColor, transformOrigin: "left", animation: `pbgrow .6s ease-out ${i * 0.08}s both` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Récords */}
