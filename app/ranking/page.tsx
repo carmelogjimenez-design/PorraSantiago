@@ -5,6 +5,7 @@ import AppShell from "../components/app-shell";
 import Avatar from "../components/avatar";
 import Icon from "../components/icons";
 import RankingTools from "./ranking-tools";
+import RankingTimeline from "./timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,8 @@ export default async function RankingPage() {
           )}
         </div>
       )}
+
+      <RankingTimeline meId={user.id} />
 
       {topHasPoints ? (
         <div className="card mt-5 flex items-end justify-center gap-3 p-6">
