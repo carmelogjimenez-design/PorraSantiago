@@ -72,6 +72,16 @@ export default async function AdminPage() {
           </div>
           <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
         </a>
+        <a href="/admin/editar" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md sm:col-span-2">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">✍️</span>
+            <div>
+              <div className="text-sm font-extrabold">Editar pronósticos</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Corrige el pronóstico de cualquier jugador (modo admin, también tras el pitido).</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
         <a href="/admin/resultados" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">🚨</span>
