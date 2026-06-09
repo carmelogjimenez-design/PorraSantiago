@@ -206,17 +206,17 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
           {/* Escalera de niveles (cromos) */}
           <div className="mt-5">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]"><span>🏅</span> Escalera de niveles</div>
-            <div className="flex gap-2.5 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-2.5 overflow-x-auto pb-2 pt-2" style={{ scrollbarWidth: "none" }}>
               {LEVELS.map((L, i) => {
                 const unlocked = i <= lvl;
                 const current = i === lvl;
                 return (
-                  <div key={i} className={`relative flex-none w-[88px] rounded-2xl border-[1.5px] p-2.5 text-center ${current ? "border-[var(--accent)] bg-[var(--accent-soft)]" : unlocked ? "border-[var(--border)] bg-white" : "border-[var(--border)] bg-[var(--soft)]"}`}>
+                  <div key={i} className={`relative flex min-h-[104px] w-[92px] flex-none flex-col items-center rounded-2xl border-[1.5px] p-2 text-center ${current ? "border-[var(--accent)] bg-[var(--accent-soft)]" : unlocked ? "border-[var(--border)] bg-white" : "border-[var(--border)] bg-[var(--soft)]"}`}>
                     <div className={`text-2xl ${unlocked ? "" : "opacity-30 grayscale"}`}>{L.emoji}</div>
-                    <div className={`mt-1 text-[10px] font-extrabold leading-tight ${unlocked ? "text-[var(--text)]" : "text-[var(--text-dim)]"}`}>{L.name}</div>
-                    <div className="mt-0.5 text-[9px] font-bold text-[var(--text-dim)]">{L.min} pts</div>
+                    <div className={`mt-1 w-full break-words text-[10px] font-extrabold leading-tight ${unlocked ? "text-[var(--text)]" : "text-[var(--text-dim)]"}`}>{L.name}</div>
+                    <div className="mt-auto pt-1 text-[9px] font-bold text-[var(--text-dim)]">{L.min} pts</div>
                     {!unlocked && <div className="absolute right-1.5 top-1.5 text-xs">🔒</div>}
-                    {current && <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white">Tú</div>}
+                    {current && <div className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--accent)] px-2 py-0.5 text-[9px] font-extrabold leading-none text-white">Tú</div>}
                   </div>
                 );
               })}
@@ -238,22 +238,21 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
           ) : (
             <>
               {/* Podio */}
-              <div className="mt-3 flex items-end justify-center gap-2">
+              <div className="mt-4 flex items-end justify-center gap-2.5">
                 {(board.slice(0, 3).length === 3 ? [1, 0, 2] : board.slice(0, 3).map((_, i) => i)).map((pos) => {
                   const r = board[pos];
                   if (!r) return null;
-                  const h = pos === 0 ? 70 : pos === 1 ? 52 : 40;
-                  const medal = pos === 0 ? "🥇" : pos === 1 ? "🥈" : "🥉";
                   const mine = r.user_id === myId;
+                  const h = pos === 0 ? 76 : pos === 1 ? 56 : 42;
+                  const medal = pos === 0 ? "🥇" : pos === 1 ? "🥈" : "🥉";
+                  const pedBg = mine ? "var(--accent-soft)" : pos === 0 ? "var(--amber-soft)" : "var(--soft)";
                   return (
-                    <div key={r.user_id} className="flex w-1/3 max-w-[120px] flex-col items-center">
-                      {pos === 0 && <div className="text-xl leading-none">👑</div>}
-                      <div className={`mt-1 grid h-11 w-11 place-items-center rounded-full text-base font-extrabold ${mine ? "bg-[var(--accent)] text-white" : "bg-[var(--soft)] text-[var(--text)]"}`}>{(r.display_name || "?").charAt(0).toUpperCase()}</div>
-                      <div className="mt-1 max-w-full truncate text-[12px] font-extrabold">{mine ? "Tú" : r.display_name}</div>
+                    <div key={r.user_id} className="flex w-1/3 max-w-[128px] flex-col items-center justify-end">
+                      {pos === 0 && <div className="text-2xl leading-none">👑</div>}
+                      <div className={`grid h-12 w-12 place-items-center rounded-full text-base font-extrabold ${mine ? "bg-[var(--accent)] text-white" : "bg-[var(--soft)] text-[var(--text)]"}`}>{(r.display_name || "?").charAt(0).toUpperCase()}</div>
+                      <div className="mt-1.5 max-w-full truncate text-[12px] font-extrabold leading-tight">{mine ? "Tú" : r.display_name}</div>
                       <div className="text-[11px] font-bold text-[var(--text-dim)]">{r.points} pts</div>
-                      <div className={`mt-1 flex w-full items-start justify-center rounded-t-xl ${pos === 0 ? "bg-[var(--accent-soft)]" : "bg-[var(--soft)]"}`} style={{ height: h }}>
-                        <span className="mt-1 text-lg">{medal}</span>
-                      </div>
+                      <div className="mt-1.5 grid w-full place-items-center rounded-t-xl text-xl" style={{ height: h, background: pedBg }}>{medal}</div>
                     </div>
                   );
                 })}
