@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS, type Question } from "./questions";
 
@@ -46,16 +46,65 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// Estilos de animación (inyectados una vez)
+function FxStyles() {
+  return (
+    <style>{`
+      @keyframes fxfall { 0%{transform:translateY(0) rotate(0);opacity:1} 100%{transform:translateY(110vh) rotate(540deg);opacity:0} }
+      @keyframes fxshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+      @keyframes fxpop { 0%{transform:scale(.82);opacity:0} 55%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+      @keyframes fxplus { 0%{transform:translateY(0);opacity:0} 25%{opacity:1} 100%{transform:translateY(-30px);opacity:0} }
+      @keyframes fxflip { 0%{transform:perspective(600px) rotateY(90deg) scale(.9);opacity:0} 100%{transform:perspective(600px) rotateY(0) scale(1);opacity:1} }
+      @keyframes fxpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.14)} }
+    `}</style>
+  );
+}
+
+// Lluvia de confeti
+function Confetti({ fire }: { fire: number }) {
+  const [pieces, setPieces] = useState<{ id: number; left: number; delay: number; bg: string; rot: number; dur: number }[]>([]);
+  useEffect(() => {
+    if (!fire) return;
+    const colors = ["var(--accent)", "#ffd24d", "#3ddc84", "#5b8cff", "#ff8fab"];
+    const arr = Array.from({ length: 28 }, (_, i) => ({
+      id: fire * 100 + i,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.25,
+      bg: colors[i % colors.length],
+      rot: Math.random() * 360,
+      dur: 0.9 + Math.random() * 0.7,
+    }));
+    setPieces(arr);
+    const t = setTimeout(() => setPieces([]), 2000);
+    return () => clearTimeout(t);
+  }, [fire]);
+  if (pieces.length === 0) return null;
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+      {pieces.map((p) => (
+        <span
+          key={p.id}
+          className="absolute top-[-12px] h-2.5 w-2.5 rounded-[2px]"
+          style={{ left: `${p.left}%`, background: p.bg, transform: `rotate(${p.rot}deg)`, animation: `fxfall ${p.dur}s ${p.delay}s ease-in forwards` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: string; myName: string; myTotal: number; ranking: RankRow[] }) {
   const [screen, setScreen] = useState<"home" | "play" | "result">("home");
   const [deck, setDeck] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [roundCorrect, setRoundCorrect] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
   const [taunt, setTaunt] = useState<string | null>(null);
   const [total, setTotal] = useState(myTotal);
   const [prevLevel, setPrevLevel] = useState(levelFor(myTotal));
   const [saving, setSaving] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
 
   const lvl = levelFor(total);
   const level = LEVELS[lvl];
@@ -71,9 +120,15 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
     return rows.sort((a, b) => b.points - a.points).slice(0, 10);
   }, [ranking, myId, myName, total]);
 
+  // Confeti al entrar en resultado con subida de nivel
+  useEffect(() => {
+    if (screen === "result" && levelFor(total) > prevLevel) setConfettiKey((k) => k + 1);
+  }, [screen, total, prevLevel]);
+
   const start = () => {
     setDeck(shuffle(QUESTIONS).slice(0, ROUND));
     setIdx(0); setPicked(null); setRoundCorrect(0); setTaunt(null);
+    setStreak(0); setBestStreak(0);
     setPrevLevel(levelFor(total));
     setScreen("play");
   };
@@ -82,8 +137,15 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
     if (picked !== null) return;
     setPicked(i);
     const ok = i === deck[idx].answer;
-    if (ok) setRoundCorrect((c) => c + 1);
-    // mensaje canalla de vez en cuando
+    if (ok) {
+      setRoundCorrect((c) => c + 1);
+      const ns = streak + 1;
+      setStreak(ns);
+      setBestStreak((b) => Math.max(b, ns));
+      setConfettiKey((k) => k + 1);
+    } else {
+      setStreak(0);
+    }
     if (Math.random() < 0.33) setTaunt(TAUNTS[Math.floor(Math.random() * TAUNTS.length)]);
     else setTaunt(null);
   };
@@ -93,7 +155,6 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
       setIdx(idx + 1); setPicked(null); setTaunt(null);
       return;
     }
-    // fin de ronda
     const gained = roundCorrect * PER_HIT;
     const newTotal = total + gained;
     setTotal(newTotal);
@@ -105,136 +166,206 @@ export default function TriviaGame({ myId, myName, myTotal, ranking }: { myId: s
     setSaving(false);
   };
 
-  // -------- HOME --------
-  if (screen === "home") {
-    return (
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Trivial del Mundial 🧠</h1>
-        <p className="mt-1 text-sm text-[var(--text-dim)]">Preguntas frikis de Mundiales. Cada acierto suma. ¡A por el trono!</p>
+  const circ = 2 * Math.PI * 34;
 
-        <div className="card mt-5 p-5">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{level.emoji}</span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Tu nivel</div>
-              <div className="font-[family-name:var(--font-display)] text-xl font-extrabold">{level.name}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-[family-name:var(--font-display)] text-2xl font-extrabold text-[var(--accent)]">{total}</div>
-              <div className="text-[11px] font-bold text-[var(--text-dim)]">puntos</div>
-            </div>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--soft)]">
-            <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-700" style={{ width: `${spanPct}%` }} />
-          </div>
-          <div className="mt-1.5 text-[11px] font-bold text-[var(--text-dim)]">
-            {next ? <>Te faltan <span className="text-[var(--accent)]">{toNext}</span> pts para <b>{next.name}</b> {next.emoji}</> : <>¡Nivel máximo desbloqueado! 🥇</>}
-          </div>
-        </div>
-
-        <button onClick={start} className="mt-5 w-full rounded-2xl bg-[var(--accent)] py-4 text-base font-extrabold text-white transition active:scale-95">
-          ▶️ Jugar ronda ({ROUND} preguntas)
-        </button>
-
-        <div className="mt-7 flex items-center gap-2">
-          <span className="text-lg">👑</span>
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Rey del trivial</h2>
-        </div>
-        <div className="card mt-2.5 overflow-hidden p-0">
-          {board.length === 0 ? (
-            <p className="py-5 text-center text-sm text-[var(--text-dim)]">Nadie ha jugado todavía. ¡Sé el primero! 😎</p>
-          ) : board.map((r, i) => (
-            <div key={r.user_id} className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""} ${r.user_id === myId ? "bg-[var(--accent-soft)]" : ""}`}>
-              <span className="w-6 text-center font-[family-name:var(--font-display)] font-extrabold text-[var(--text-dim)]">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-bold">{r.display_name}{r.user_id === myId ? " (tú)" : ""}</span>
-              <span className="flex-none font-[family-name:var(--font-display)] text-sm font-extrabold">{r.points}<span className="ml-0.5 text-[10px] font-bold text-[var(--text-dim)]">pts</span></span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // -------- PLAY --------
-  if (screen === "play") {
-    const qq = deck[idx];
-    return (
-      <div>
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Pregunta {idx + 1}/{deck.length}</span>
-          <span className="text-[12px] font-bold text-[var(--text-dim)]">Aciertos: <b className="text-[var(--accent)]">{roundCorrect}</b></span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--soft)]">
-          <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${((idx) / deck.length) * 100}%` }} />
-        </div>
-
-        <div className="card mt-4 p-5">
-          <p className="font-[family-name:var(--font-display)] text-lg font-extrabold leading-snug">{qq.q}</p>
-          <div className="mt-4 grid gap-2">
-            {qq.options.map((opt, i) => {
-              const isAns = i === qq.answer;
-              const chosen = picked === i;
-              let cls = "border-[var(--border)] bg-white hover:border-[var(--accent)]";
-              if (picked !== null) {
-                if (isAns) cls = "border-[var(--green)] bg-[var(--green-soft)]";
-                else if (chosen) cls = "border-[var(--accent)] bg-[var(--accent-soft)]";
-                else cls = "border-[var(--border)] bg-white opacity-60";
-              }
-              return (
-                <button key={i} onClick={() => choose(i)} disabled={picked !== null}
-                  className={`flex items-center gap-3 rounded-xl border-[1.5px] px-4 py-3 text-left text-sm font-bold transition ${cls}`}>
-                  <span className="grid h-6 w-6 flex-none place-items-center rounded-md bg-[var(--soft)] text-[11px] font-extrabold text-[var(--text-dim)]">{"ABCD"[i]}</span>
-                  <span className="min-w-0 flex-1">{opt}</span>
-                  {picked !== null && isAns && <span className="flex-none text-[var(--green)]">✓</span>}
-                  {picked !== null && chosen && !isAns && <span className="flex-none text-[var(--accent)]">✗</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {taunt && (
-          <div className="mt-3 rounded-xl bg-[var(--text)] px-4 py-3 text-center text-[13px] font-extrabold text-white">{taunt}</div>
-        )}
-
-        {picked !== null && (
-          <button onClick={nextQ} className="mt-4 w-full rounded-2xl bg-[var(--accent)] py-3.5 text-base font-extrabold text-white transition active:scale-95">
-            {idx + 1 < deck.length ? "Siguiente →" : "Ver resultado"}
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // -------- RESULT --------
-  const gained = roundCorrect * PER_HIT;
-  const leveledUp = levelFor(total) > prevLevel;
   return (
-    <div className="mx-auto max-w-md text-center">
-      <div className="text-5xl">{leveledUp ? "🎉" : roundCorrect >= deck.length / 2 ? "💪" : "🙈"}</div>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">{roundCorrect}/{deck.length}</h1>
-      <p className="mt-1 text-sm text-[var(--text-dim)]">Has sumado <b className="text-[var(--accent)]">+{gained} puntos</b>{saving ? " · guardando…" : ""}</p>
+    <>
+      <FxStyles />
+      <Confetti fire={confettiKey} />
 
-      {leveledUp && (
-        <div className="card mt-5 p-5">
-          <div className="text-3xl">{LEVELS[levelFor(total)].emoji}</div>
-          <div className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">¡Nivel desbloqueado!</div>
-          <div className="font-[family-name:var(--font-display)] text-xl font-extrabold">{LEVELS[levelFor(total)].name}</div>
+      {/* ---------------- HOME ---------------- */}
+      {screen === "home" && (
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Trivial del Mundial 🧠</h1>
+          <p className="mt-1 text-sm text-[var(--text-dim)]">Preguntas frikis de Mundiales. Cada acierto suma. ¡A por el trono!</p>
+
+          {/* Héroe: anillo de XP */}
+          <div className="card mt-5 p-5">
+            <div className="flex items-center gap-4">
+              <div className="relative grid flex-none place-items-center" style={{ width: 84, height: 84 }}>
+                <svg width="84" height="84" viewBox="0 0 84 84" className="-rotate-90">
+                  <circle cx="42" cy="42" r="34" fill="none" stroke="var(--soft)" strokeWidth="7" />
+                  <circle cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - spanPct / 100)} style={{ transition: "stroke-dashoffset .9s ease" }} />
+                </svg>
+                <span className="absolute text-3xl">{level.emoji}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Tu nivel</div>
+                <div className="font-[family-name:var(--font-display)] text-xl font-extrabold">{level.name}</div>
+                <div className="mt-0.5 text-[11px] font-bold text-[var(--text-dim)]">
+                  {next ? <>Te faltan <span className="text-[var(--accent)]">{toNext}</span> pts para <b>{next.name}</b> {next.emoji}</> : <>¡Nivel máximo! 🥇</>}
+                </div>
+              </div>
+              <div className="flex-none text-right">
+                <div className="font-[family-name:var(--font-display)] text-2xl font-extrabold text-[var(--accent)]">{total}</div>
+                <div className="text-[11px] font-bold text-[var(--text-dim)]">puntos</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Escalera de niveles (cromos) */}
+          <div className="mt-5">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]"><span>🏅</span> Escalera de niveles</div>
+            <div className="flex gap-2.5 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+              {LEVELS.map((L, i) => {
+                const unlocked = i <= lvl;
+                const current = i === lvl;
+                return (
+                  <div key={i} className={`relative flex-none w-[88px] rounded-2xl border-[1.5px] p-2.5 text-center ${current ? "border-[var(--accent)] bg-[var(--accent-soft)]" : unlocked ? "border-[var(--border)] bg-white" : "border-[var(--border)] bg-[var(--soft)]"}`}>
+                    <div className={`text-2xl ${unlocked ? "" : "opacity-30 grayscale"}`}>{L.emoji}</div>
+                    <div className={`mt-1 text-[10px] font-extrabold leading-tight ${unlocked ? "text-[var(--text)]" : "text-[var(--text-dim)]"}`}>{L.name}</div>
+                    <div className="mt-0.5 text-[9px] font-bold text-[var(--text-dim)]">{L.min} pts</div>
+                    {!unlocked && <div className="absolute right-1.5 top-1.5 text-xs">🔒</div>}
+                    {current && <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white">Tú</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={start} className="mt-5 w-full rounded-2xl bg-[var(--accent)] py-4 text-base font-extrabold text-white transition active:scale-95">
+            ▶️ Jugar ronda ({ROUND} preguntas)
+          </button>
+
+          {/* Ranking */}
+          <div className="mt-7 flex items-center gap-2">
+            <span className="text-lg">👑</span>
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Rey del trivial</h2>
+          </div>
+
+          {board.length === 0 ? (
+            <div className="card mt-2.5"><p className="py-5 text-center text-sm text-[var(--text-dim)]">Nadie ha jugado todavía. ¡Sé el primero! 😎</p></div>
+          ) : (
+            <>
+              {/* Podio */}
+              <div className="mt-3 flex items-end justify-center gap-2">
+                {(board.slice(0, 3).length === 3 ? [1, 0, 2] : board.slice(0, 3).map((_, i) => i)).map((pos) => {
+                  const r = board[pos];
+                  if (!r) return null;
+                  const h = pos === 0 ? 70 : pos === 1 ? 52 : 40;
+                  const medal = pos === 0 ? "🥇" : pos === 1 ? "🥈" : "🥉";
+                  const mine = r.user_id === myId;
+                  return (
+                    <div key={r.user_id} className="flex w-1/3 max-w-[120px] flex-col items-center">
+                      {pos === 0 && <div className="text-xl leading-none">👑</div>}
+                      <div className={`mt-1 grid h-11 w-11 place-items-center rounded-full text-base font-extrabold ${mine ? "bg-[var(--accent)] text-white" : "bg-[var(--soft)] text-[var(--text)]"}`}>{(r.display_name || "?").charAt(0).toUpperCase()}</div>
+                      <div className="mt-1 max-w-full truncate text-[12px] font-extrabold">{mine ? "Tú" : r.display_name}</div>
+                      <div className="text-[11px] font-bold text-[var(--text-dim)]">{r.points} pts</div>
+                      <div className={`mt-1 flex w-full items-start justify-center rounded-t-xl ${pos === 0 ? "bg-[var(--accent-soft)]" : "bg-[var(--soft)]"}`} style={{ height: h }}>
+                        <span className="mt-1 text-lg">{medal}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Del 4º en adelante */}
+              {board.length > 3 && (
+                <div className="card mt-3 overflow-hidden p-0">
+                  {board.slice(3).map((r, i) => (
+                    <div key={r.user_id} className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""} ${r.user_id === myId ? "bg-[var(--accent-soft)]" : ""}`}>
+                      <span className="w-6 text-center font-[family-name:var(--font-display)] font-extrabold text-[var(--text-dim)]">{i + 4}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold">{r.display_name}{r.user_id === myId ? " (tú)" : ""}</span>
+                      <span className="flex-none font-[family-name:var(--font-display)] text-sm font-extrabold">{r.points}<span className="ml-0.5 text-[10px] font-bold text-[var(--text-dim)]">pts</span></span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      <div className="card mt-5 p-4">
-        <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Tu total</div>
-        <div className="font-[family-name:var(--font-display)] text-3xl font-extrabold text-[var(--accent)]">{total}</div>
-        <div className="text-[12px] font-bold text-[var(--text-dim)]">Nivel: {LEVELS[levelFor(total)].name} {LEVELS[levelFor(total)].emoji}</div>
-      </div>
+      {/* ---------------- PLAY ---------------- */}
+      {screen === "play" && (() => {
+        const qq = deck[idx];
+        const answered = picked !== null;
+        const correctPick = answered && picked === qq.answer;
+        return (
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">Pregunta {idx + 1}/{deck.length}</span>
+              {streak >= 2 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#fff3e0] px-2.5 py-1 text-[12px] font-extrabold text-[#b45309]" style={{ animation: "fxpulse .5s ease" }}>🔥 Racha x{streak}</span>
+              ) : (
+                <span className="text-[12px] font-bold text-[var(--text-dim)]">Aciertos: <b className="text-[var(--accent)]">{roundCorrect}</b></span>
+              )}
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--soft)]">
+              <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500" style={{ width: `${(idx / deck.length) * 100}%` }} />
+            </div>
 
-      <button onClick={start} className="mt-5 w-full rounded-2xl bg-[var(--accent)] py-4 text-base font-extrabold text-white transition active:scale-95">
-        🔁 Otra ronda
-      </button>
-      <button onClick={() => setScreen("home")} className="mt-3 text-[13px] font-bold text-[var(--text-dim)] underline-offset-2 hover:underline">
-        Volver al inicio
-      </button>
-    </div>
+            <div className="card relative mt-4 p-5">
+              {correctPick && <span className="pointer-events-none absolute right-5 top-3 text-lg font-extrabold text-[var(--green)]" style={{ animation: "fxplus 1s ease forwards" }}>+10</span>}
+              <p className="font-[family-name:var(--font-display)] text-lg font-extrabold leading-snug">{qq.q}</p>
+              <div className="mt-4 grid gap-2">
+                {qq.options.map((opt, i) => {
+                  const isAns = i === qq.answer;
+                  const chosen = picked === i;
+                  let cls = "border-[var(--border)] bg-white hover:border-[var(--accent)]";
+                  let anim: string | undefined;
+                  if (answered) {
+                    if (isAns) { cls = "border-[var(--green)] bg-[var(--green-soft)]"; anim = "fxpop .35s ease"; }
+                    else if (chosen) { cls = "border-[var(--accent)] bg-[var(--accent-soft)]"; anim = "fxshake .4s ease"; }
+                    else cls = "border-[var(--border)] bg-white opacity-50";
+                  }
+                  return (
+                    <button key={i} onClick={() => choose(i)} disabled={answered} style={anim ? { animation: anim } : undefined}
+                      className={`flex items-center gap-3 rounded-xl border-[1.5px] px-4 py-3 text-left text-sm font-bold transition ${cls}`}>
+                      <span className="grid h-6 w-6 flex-none place-items-center rounded-md bg-[var(--soft)] text-[11px] font-extrabold text-[var(--text-dim)]">{"ABCD"[i]}</span>
+                      <span className="min-w-0 flex-1">{opt}</span>
+                      {answered && isAns && <span className="flex-none text-[var(--green)]">✓</span>}
+                      {answered && chosen && !isAns && <span className="flex-none text-[var(--accent)]">✗</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {taunt && <div className="mt-3 rounded-xl bg-[var(--text)] px-4 py-3 text-center text-[13px] font-extrabold text-white" style={{ animation: "fxpop .3s ease" }}>{taunt}</div>}
+
+            {answered && (
+              <button onClick={nextQ} className="mt-4 w-full rounded-2xl bg-[var(--accent)] py-3.5 text-base font-extrabold text-white transition active:scale-95">
+                {idx + 1 < deck.length ? "Siguiente →" : "Ver resultado"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ---------------- RESULT ---------------- */}
+      {screen === "result" && (() => {
+        const gained = roundCorrect * PER_HIT;
+        const curLvl = levelFor(total);
+        const leveledUp = curLvl > prevLevel;
+        const acc = Math.round((roundCorrect / Math.max(1, deck.length)) * 100);
+        return (
+          <div className="mx-auto max-w-md text-center">
+            <div className="text-5xl" style={{ animation: "fxpop .4s ease" }}>{leveledUp ? "🎉" : roundCorrect >= deck.length / 2 ? "💪" : "🙈"}</div>
+            <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">{roundCorrect}/{deck.length}</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">Has sumado <b className="text-[var(--accent)]">+{gained} puntos</b>{saving ? " · guardando…" : ""}</p>
+
+            <div className="mx-auto mt-4 grid max-w-xs grid-cols-3 gap-2">
+              <div className="rounded-xl bg-[var(--soft)] p-2.5"><div className="font-[family-name:var(--font-display)] text-lg font-extrabold">{acc}%</div><div className="text-[10px] font-bold text-[var(--text-dim)]">acierto</div></div>
+              <div className="rounded-xl bg-[var(--soft)] p-2.5"><div className="font-[family-name:var(--font-display)] text-lg font-extrabold">🔥 {bestStreak}</div><div className="text-[10px] font-bold text-[var(--text-dim)]">mejor racha</div></div>
+              <div className="rounded-xl bg-[var(--soft)] p-2.5"><div className="font-[family-name:var(--font-display)] text-lg font-extrabold text-[var(--accent)]">{total}</div><div className="text-[10px] font-bold text-[var(--text-dim)]">total</div></div>
+            </div>
+
+            {leveledUp && (
+              <div className="card mx-auto mt-5 max-w-[220px] overflow-hidden border-[1.5px] border-[var(--accent)] p-0" style={{ animation: "fxflip .6s ease" }}>
+                <div className="bg-[var(--accent)] py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">¡Nivel desbloqueado!</div>
+                <div className="p-4">
+                  <div className="text-5xl" style={{ animation: "fxpulse 1s ease" }}>{LEVELS[curLvl].emoji}</div>
+                  <div className="mt-1 font-[family-name:var(--font-display)] text-xl font-extrabold">{LEVELS[curLvl].name}</div>
+                </div>
+              </div>
+            )}
+
+            <button onClick={start} className="mt-5 w-full rounded-2xl bg-[var(--accent)] py-4 text-base font-extrabold text-white transition active:scale-95">🔁 Otra ronda</button>
+            <button onClick={() => setScreen("home")} className="mt-3 text-[13px] font-bold text-[var(--text-dim)] underline-offset-2 hover:underline">Volver al inicio</button>
+          </div>
+        );
+      })()}
+    </>
   );
 }
