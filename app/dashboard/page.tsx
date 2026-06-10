@@ -30,20 +30,25 @@ const abbr = (n: string) => CODE[n] ?? n.slice(0, 3).toUpperCase();
 
 const DFX_CSS = `
 .dfx{color:var(--text)}
-.dfx-hero{position:relative;overflow:hidden;border-radius:30px;padding:42px 34px 32px;color:#fff;isolation:isolate}
+.dfx-hero{position:relative;overflow:hidden;border-radius:30px;padding:42px 40px;color:var(--text);isolation:isolate;background:linear-gradient(135deg,#FFFFFF 0%,#FFF4F7 52%,#FFE7EE 100%);border:1px solid var(--border);box-shadow:0 1px 2px rgba(20,15,20,.04),0 30px 60px -28px rgba(255,45,85,.28)}
+.dfx-hero-in{position:relative;z-index:1;display:flex;align-items:center;gap:30px}
+.dfx-hero-main{flex:1;min-width:0}
+.dfx-hero-art{flex:none;width:300px;display:grid;place-items:center;position:relative}
+.dfx-art-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,45,85,.20),rgba(255,45,85,0));filter:blur(6px);z-index:0}
+.dfx-appicon{position:relative;z-index:1;width:200px;height:200px;object-fit:contain;filter:drop-shadow(0 22px 32px rgba(255,45,85,.32));transform:rotate(-4deg);animation:dfxfloat 6s ease-in-out infinite}
 .dfx-mesh{position:absolute;inset:0;z-index:-2;background:radial-gradient(55% 75% at 12% 18%,#FF6E8A 0%,rgba(255,110,138,0) 60%),radial-gradient(48% 65% at 88% 8%,#FF2D55 0%,rgba(255,45,85,0) 55%),radial-gradient(75% 95% at 72% 100%,#D81C57 0%,rgba(216,28,87,0) 60%),linear-gradient(125deg,#FF3A60 0%,#C61F41 100%);background-size:180% 180%;animation:dfxmesh 16s ease-in-out infinite}
 .dfx-grain{position:absolute;inset:0;z-index:-1;opacity:.10;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .dfx-orb{position:absolute;width:120px;height:120px;border-radius:50%;filter:blur(8px);z-index:-1;background:#fff;opacity:.12;right:18%;top:14%}
 .dfx-emblem{position:absolute;right:-30px;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.16;z-index:-1}
 .dfx-badge{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.28);padding:6px 13px;border-radius:999px}
 .dfx-pulse{width:7px;height:7px;border-radius:50%;background:#fff;animation:dfxpulse 2s infinite}
-.dfx-h1{font-family:var(--font-display),sans-serif;font-weight:800;letter-spacing:-.025em;font-size:clamp(40px,7vw,72px);line-height:.92;margin-top:16px;text-shadow:0 2px 30px rgba(0,0,0,.18)}
-.dfx-gw{background:linear-gradient(90deg,#FFE3E9,#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.dfx-lead{margin-top:15px;max-width:34ch;font-weight:500;font-size:15px;color:rgba(255,255,255,.92)}
+.dfx-h1{font-family:var(--font-display),sans-serif;font-weight:800;letter-spacing:-.03em;font-size:clamp(40px,6.6vw,72px);line-height:.9;margin-top:14px;color:var(--text)}
+.dfx-gw{background:linear-gradient(120deg,#FF2D55,#FF5C7A);-webkit-background-clip:text;background-clip:text;color:transparent}
+.dfx-lead{margin-top:15px;max-width:34ch;font-weight:500;font-size:15px;color:var(--text-dim)}
 .dfx-clock{margin-top:26px;display:inline-flex;align-items:stretch;gap:8px;flex-wrap:wrap}
-.dfx-cl{min-width:72px;text-align:center;padding:13px 8px;border-radius:16px;background:rgba(255,255,255,.14);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.26);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-.dfx-n{font-family:var(--font-display),sans-serif;font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 24px rgba(255,255,255,.45)}
-.dfx-l{margin-top:7px;font-size:10px;font-weight:800;letter-spacing:.16em;color:rgba(255,255,255,.8)}
+.dfx-cl{min-width:74px;text-align:center;padding:14px 8px;border-radius:18px;background:linear-gradient(180deg,#fff,#FFF4F7);border:1px solid var(--border);box-shadow:0 1px 2px rgba(20,15,20,.04),0 14px 30px -18px rgba(255,45,85,.45)}
+.dfx-n{font-family:var(--font-display),sans-serif;font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
+.dfx-l{margin-top:7px;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--accent)}
 .dfx-kick{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:rgba(255,255,255,.95);min-width:auto;padding:13px 18px;text-align:left}
 .dfx-kick small{font-size:11px;font-weight:700;color:var(--text-dim)}
 .dfx-kick b{font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;margin-top:2px;color:var(--text)}
@@ -115,17 +120,18 @@ const DFX_CSS = `
 .dfx-rank3+.dfx-rank3{border-top:1px solid var(--border)}
 .dfx-foot{margin-top:24px;border-top:1px solid var(--border);padding-top:16px;font-size:12px;color:var(--text-dim);font-weight:600;opacity:.8}
 .dfx-ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.dfx-brand{display:flex;align-items:center;gap:13px;position:relative}
-.dfx-brand-icon{width:52px;height:52px;flex:none;border-radius:14px;object-fit:cover;box-shadow:0 8px 22px -8px rgba(0,0,0,.5);outline:1px solid rgba(255,255,255,.22);outline-offset:-1px}
-.dfx-brand-name{font-family:var(--font-display),sans-serif;font-weight:800;font-size:18px;letter-spacing:-.01em;line-height:1}
-.dfx-brand-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);margin-top:4px}
-.dfx-live{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;letter-spacing:.12em;color:#fff;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.28);padding:14px 20px;border-radius:16px}
-.dfx-live-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:dfxpulse 1.6s infinite}
+.dfx-brand{margin-bottom:20px}
+.dfx-brand-name{font-family:var(--font-display),sans-serif;font-weight:800;font-size:15px;letter-spacing:.06em;line-height:1;text-transform:uppercase}
+.dfx-brand-sub{font-size:12px;font-weight:600;color:var(--text-dim);margin-top:5px}
+.dfx-live{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--accent-deep);background:var(--accent-soft);border:1px solid var(--accent-soft);padding:14px 20px;border-radius:16px}
+.dfx-live-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:dfxpulse 1.6s infinite}
 @media(max-width:900px){.dfx-grid{grid-template-columns:1fr}.dfx-emblem{display:none}.dfx-groups{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.dfx-games{grid-template-columns:1fr}}
 @keyframes dfxmesh{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-@keyframes dfxpulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.7)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
-@media(prefers-reduced-motion:reduce){.dfx-mesh{animation:none}.dfx-pulse{animation:none}.dfx-live-dot{animation:none}}
+@keyframes dfxpulse{0%{box-shadow:0 0 0 0 rgba(255,45,85,.55)}70%{box-shadow:0 0 0 8px rgba(255,45,85,0)}100%{box-shadow:0 0 0 0 rgba(255,45,85,0)}}
+@keyframes dfxfloat{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(-4deg) translateY(-9px)}}
+@media(max-width:820px){.dfx-hero-art{display:none}}
+@media(prefers-reduced-motion:reduce){.dfx-mesh{animation:none}.dfx-pulse{animation:none}.dfx-live-dot{animation:none}.dfx-appicon{animation:none}}
 `;
 
 const I_BALL = (<svg className="dfx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7l3 2-1 3.5h-4L9 9z" /></svg>);
@@ -199,18 +205,22 @@ export default async function DashboardPage() {
       <div className="dfx">
         {/* HERO */}
         <section className="dfx-hero">
-          <div className="dfx-mesh" /><div className="dfx-grain" /><div className="dfx-orb" />
-          <div className="dfx-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="dfx-brand-icon" src="/logo.png" alt="La Porra de Santiago" />
-            <div>
-              <div className="dfx-brand-name">La Porra de Santiago</div>
-              <div className="dfx-brand-sub">Mundial 2026 · 48 selecciones</div>
+          <div className="dfx-hero-in">
+            <div className="dfx-hero-main">
+              <div className="dfx-brand">
+                <div className="dfx-brand-name">La Porra de Santiago</div>
+                <div className="dfx-brand-sub">Mundial 2026 · 48 selecciones</div>
+              </div>
+              <h1 className="dfx-h1">Predice.<br />Compite.<br /><span className="dfx-gw">Gana.</span></h1>
+              <p className="dfx-lead">En Santiago todos sabéis más que el seleccionador. La porra dirá quién es el crack… y quién el cuñao.</p>
+              <Countdown target={kickoff} />
+            </div>
+            <div className="dfx-hero-art">
+              <div className="dfx-art-glow" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="dfx-appicon" src="/logo-sinfondo.png" alt="La Porra de Santiago" />
             </div>
           </div>
-          <h1 className="dfx-h1">Predice.<br />Compite.<br /><span className="dfx-gw">Gana.</span></h1>
-          <p className="dfx-lead">En Santiago todos sabéis más que el seleccionador. La porra dirá quién es el crack… y quién el cuñao.</p>
-          <Countdown target={kickoff} />
         </section>
 
         <div className="dfx-grid">
