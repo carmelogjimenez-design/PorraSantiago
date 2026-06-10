@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState, useActionState } from "react";
-import { saveScorers, type ScorerState } from "./actions";
+import { saveGroupScorers, type ScorerGroupState } from "./group-actions";
 
-export type PlayerVM = { id: string; name: string; pos: string; team: string; flag: string | null };
+export type PlayerVM = { id: string; name: string; pos: string; team: string; flag: string | null; groupId: number };
+type Group = { id: number; label: string };
+
+const POS_LABEL: Record<string, string> = { GK: "Portero", DF: "Defensa", MF: "Centrocampista", FW: "Delantero" };
 
 function Flag({ src, name }: { src: string | null; name: string }) {
   if (!src) return <span className="h-5 w-7 flex-none rounded bg-[var(--soft)]" aria-label={name} />;
@@ -11,130 +14,129 @@ function Flag({ src, name }: { src: string | null; name: string }) {
   return <img src={src} alt={name} className="h-5 w-7 flex-none rounded object-cover ring-1 ring-[var(--border)]" />;
 }
 
-const POS_LABEL: Record<string, string> = { GK: "Portero", DF: "Defensa", MF: "Centrocampista", FW: "Delantero" };
-
 export default function ScorersPicker({
-  players, initialSelected, locked,
-}: { players: PlayerVM[]; initialSelected: string[]; locked: boolean }) {
+  players, groups, initialByGroup, locked,
+}: { players: PlayerVM[]; groups: Group[]; initialByGroup: Record<number, string>; locked: boolean }) {
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
-  const [selected, setSelected] = useState<string[]>(initialSelected);
+  const playersByGroup = useMemo(() => {
+    const m = new Map<number, PlayerVM[]>();
+    for (const p of players) {
+      if (!m.has(p.groupId)) m.set(p.groupId, []);
+      m.get(p.groupId)!.push(p);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => (a.team === b.team ? a.name.localeCompare(b.name) : a.team.localeCompare(b.team)));
+    return m;
+  }, [players]);
+
+  const [picks, setPicks] = useState<Record<number, string>>(initialByGroup);
+  const [open, setOpen] = useState<number | null>(null);
   const [query, setQuery] = useState("");
-  const [state, action, pending] = useActionState<ScorerState, FormData>(saveScorers, null);
+  const [state, action, pending] = useActionState<ScorerGroupState, FormData>(saveGroupScorers, null);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return players
-      .filter((p) => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
-      .slice(0, 40);
-  }, [query, players]);
+  const chosenCount = groups.filter((g) => picks[g.id]).length;
 
-  const toggle = (id: string) => {
-    setSelected((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 3 ? cur : [...cur, id]
-    );
-  };
+  const pick = (gid: number, id: string) => { setPicks((p) => ({ ...p, [gid]: id })); setOpen(null); setQuery(""); };
+  const clear = (gid: number) => setPicks((p) => { const n = { ...p }; delete n[gid]; return n; });
 
   return (
     <div className="min-w-0">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Goleadores</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Goleadores 🥅</h1>
       <p className="mt-1 text-sm text-[var(--text-dim)]">
-        Elige hasta <b className="text-[var(--text)]">3 goleadores</b>. Sumas <b className="text-[var(--text)]">3 puntos por cada gol</b> que marquen en el Mundial.
+        Elige <b className="text-[var(--text)]">1 goleador por grupo</b> (12 en total). Sumas <b className="text-[var(--text)]">3 puntos por cada gol</b> que marquen en el Mundial.
       </p>
 
-      {/* elegidos */}
-      <div className="mt-4 grid grid-cols-3 gap-2.5">
-        {[0, 1, 2].map((i) => {
-          const p = selected[i] ? byId.get(selected[i]) : null;
+      {locked && (
+        <div className="mt-4 rounded-2xl bg-[var(--soft)] p-4 text-center text-sm font-bold text-[var(--text-dim)]">
+          🔒 El Mundial ya empezó · tus goleadores están bloqueados
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2.5">
+        {groups.map((g) => {
+          const pid = picks[g.id];
+          const p = pid ? byId.get(pid) : null;
+          const isOpen = open === g.id;
+          const q = query.trim().toLowerCase();
+          const list = (playersByGroup.get(g.id) ?? [])
+            .filter((pl) => (q ? pl.name.toLowerCase().includes(q) || pl.team.toLowerCase().includes(q) : true))
+            .slice(0, 80);
           return (
-            <div key={i} className={`card flex flex-col items-center gap-1.5 p-3 text-center ${p ? "border-[var(--accent)]" : "border-dashed"}`}>
-              <span className="text-[10px] font-extrabold tracking-wide text-[var(--text-dim)]">GOLEADOR {i + 1}</span>
-              {p ? (
-                <>
-                  <Flag src={p.flag} name={p.team} />
-                  <span className="text-[13px] font-bold leading-tight">{p.name}</span>
-                  <span className="text-[10px] text-[var(--text-dim)]">{p.team}</span>
-                  {!locked && (
-                    <button type="button" onClick={() => toggle(p.id)}
-                      className="mt-0.5 text-[11px] font-bold text-[var(--accent-deep)]">Quitar</button>
+            <div key={g.id} className={`card p-3 ${p ? "border-[var(--accent)]" : ""}`}>
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-[var(--accent-soft)] font-[family-name:var(--font-display)] text-sm font-extrabold text-[var(--accent-deep)]">{g.label}</span>
+                <div className="min-w-0 flex-1">
+                  {p ? (
+                    <div className="flex items-center gap-2">
+                      <Flag src={p.flag} name={p.team} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold">{p.name}</div>
+                        <div className="truncate text-[11px] text-[var(--text-dim)]">{p.team}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-bold text-[var(--text-dim)]">Grupo {g.label} · sin elegir</span>
                   )}
-                </>
-              ) : (
-                <span className="grid h-12 place-items-center text-2xl text-[var(--text-dim)]">＋</span>
+                </div>
+                {!locked && (
+                  <button type="button" onClick={() => { setOpen(isOpen ? null : g.id); setQuery(""); }}
+                    className="flex-none rounded-lg bg-[var(--soft)] px-3 py-1.5 text-[12px] font-extrabold text-[var(--text)]">
+                    {p ? "Cambiar" : "Elegir"}
+                  </button>
+                )}
+              </div>
+
+              {isOpen && !locked && (
+                <div className="mt-3">
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Busca en el grupo ${g.label}…`}
+                    autoFocus
+                    className="w-full rounded-xl border-[1.5px] border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                  />
+                  <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                    {list.map((pl) => {
+                      const chosen = picks[g.id] === pl.id;
+                      return (
+                        <button key={pl.id} type="button" onClick={() => pick(g.id, pl.id)}
+                          className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition ${chosen ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-white"} active:scale-[0.99]`}>
+                          <Flag src={pl.flag} name={pl.team} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold">{pl.name}</span>
+                            <span className="block text-[11px] text-[var(--text-dim)]">{pl.team} · {POS_LABEL[pl.pos] ?? pl.pos}</span>
+                          </span>
+                          <span className={`text-lg font-extrabold ${chosen ? "text-[var(--accent)]" : "text-[var(--text-dim)]"}`}>{chosen ? "✓" : "＋"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {p && (
+                    <button type="button" onClick={() => clear(g.id)} className="mt-2 text-[12px] font-bold text-[var(--accent-deep)]">
+                      Quitar elección del grupo {g.label}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           );
         })}
       </div>
 
-      {locked ? (
-        <div className="mt-5 rounded-2xl bg-[var(--soft)] p-4 text-center text-sm font-bold text-[var(--text-dim)]">
-          🔒 El Mundial ya empezó · tus goleadores están bloqueados
-        </div>
-      ) : (
-        <>
-          {/* buscador */}
-          <div className="sticky top-0 z-20 mt-5 -mx-4 bg-white/90 px-4 py-3 backdrop-blur-lg lg:mx-0 lg:px-0">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Busca por jugador o selección (ej. Mbappé, España)…"
-              className="w-full rounded-xl border-[1.5px] border-[var(--border)] px-4 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
-            />
+      {!locked && (
+        <form action={action} className="sticky bottom-20 z-20 mt-4 lg:bottom-4">
+          {groups.map((g) => (picks[g.id] ? <input key={g.id} type="hidden" name={`g${g.id}`} value={picks[g.id]} /> : null))}
+          <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white p-3 shadow-lg">
+            <span className="text-xs">
+              {state?.error ? <span className="font-bold text-[var(--accent-deep)]">{state.error}</span>
+                : state?.ok ? <span className="font-extrabold text-[var(--green)]">✓ Goleadores guardados</span>
+                : <span className="text-[var(--text-dim)]">{chosenCount}/12 grupos</span>}
+            </span>
+            <button type="submit" disabled={pending || chosenCount === 0}
+              className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white transition active:scale-95 disabled:opacity-50">
+              {pending ? "..." : "Guardar"}
+            </button>
           </div>
-
-          {/* resultados */}
-          <div className="mt-2 space-y-1.5">
-            {query.trim() === "" ? (
-              <p className="py-6 text-center text-sm text-[var(--text-dim)]">
-                Escribe el nombre de un jugador o de una selección para buscarlo 🔎
-              </p>
-            ) : results.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--text-dim)]">Sin resultados para “{query}”.</p>
-            ) : (
-              results.map((p) => {
-                const chosen = selected.includes(p.id);
-                const full = selected.length >= 3 && !chosen;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggle(p.id)}
-                    disabled={full}
-                    className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition ${
-                      chosen ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-white"
-                    } ${full ? "opacity-40" : "active:scale-[0.99]"}`}
-                  >
-                    <Flag src={p.flag} name={p.team} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">{p.name}</span>
-                      <span className="block text-[11px] text-[var(--text-dim)]">{p.team} · {POS_LABEL[p.pos] ?? p.pos}</span>
-                    </span>
-                    <span className={`text-lg font-extrabold ${chosen ? "text-[var(--accent)]" : "text-[var(--text-dim)]"}`}>
-                      {chosen ? "✓" : "＋"}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {/* guardar */}
-          <form action={action} className="sticky bottom-20 z-20 mt-4 lg:bottom-4">
-            {selected.map((id, i) => <input key={i} type="hidden" name={`player${i + 1}`} value={id} />)}
-            <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white p-3 shadow-lg">
-              <span className="text-xs">
-                {state?.error ? <span className="font-bold text-[var(--accent-deep)]">{state.error}</span>
-                  : state?.ok ? <span className="pop font-extrabold text-[var(--green)]">✓ Goleadores guardados</span>
-                  : <span className="text-[var(--text-dim)]">{selected.length}/3 elegidos</span>}
-              </span>
-              <button type="submit" disabled={pending || selected.length === 0}
-                className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white transition active:scale-95 disabled:opacity-50">
-                {pending ? "..." : "Guardar"}
-              </button>
-            </div>
-          </form>
-        </>
+        </form>
       )}
     </div>
   );

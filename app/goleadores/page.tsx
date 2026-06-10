@@ -4,35 +4,43 @@ import AppShell from "../components/app-shell";
 import ScorersPicker, { type PlayerVM } from "./scorers-picker";
 export const dynamic = "force-dynamic";
 type PlayerRow = { id: string; full_name: string; position: string | null; team_id: string; goals: number | null; goals_override: number | null };
-type TeamRow = { id: string; name: string; flag_url: string | null };
+type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
 type SSRow = { player_id: string; slot: number };
 const POS = ["#f5b301", "#9aa3af", "#cd7f32"]; // oro, plata, bronce
 export default async function GoleadoresPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [profileRes, myPtsRes, players1Res, players2Res, teamsRes, ssRes, cfgRes, firstRes] = await Promise.all([
+  const [profileRes, myPtsRes, players1Res, players2Res, teamsRes, ssRes, cfgRes, firstRes, groupsRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
     supabase.from("players").select("id,full_name,position,team_id,goals,goals_override").order("full_name").range(0, 999),
     supabase.from("players").select("id,full_name,position,team_id,goals,goals_override").order("full_name").range(1000, 1999),
-    supabase.from("teams").select("id,name,flag_url"),
+    supabase.from("teams").select("id,name,flag_url,group_id"),
     supabase.from("selected_scorers").select("player_id,slot").eq("user_id", user.id).order("slot"),
     supabase.from("tournament_config").select("group_stage_starts_at").eq("id", 1).maybeSingle(),
     supabase.from("matches").select("kickoff_at").order("kickoff_at").limit(1).maybeSingle(),
+    supabase.from("groups").select("id,label").order("id"),
   ]);
   const name = profileRes.data?.display_name ?? "Jugador";
   const points = Number(myPtsRes.data ?? 0);
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
+  const groups = (groupsRes.data ?? []) as { id: number; label: string }[];
   const playersRaw = ([...(players1Res.data ?? []), ...(players2Res.data ?? [])]) as PlayerRow[];
   const players: PlayerVM[] = playersRaw
     .map((p) => {
       const t = teamById.get(p.team_id);
-      return { id: p.id, name: p.full_name, pos: p.position ?? "", team: t?.name ?? "?", flag: t?.flag_url ?? null };
+      return { id: p.id, name: p.full_name, pos: p.position ?? "", team: t?.name ?? "?", flag: t?.flag_url ?? null, groupId: t?.group_id ?? 0 };
     })
+    .filter((p) => p.groupId >= 1 && p.groupId <= 12)
     .sort((a, b) => (a.team === b.team ? a.name.localeCompare(b.name) : a.team.localeCompare(b.team)));
-  const selected = ((ssRes.data ?? []) as SSRow[]).sort((a, b) => a.slot - b.slot).map((r) => r.player_id);
+
+  // Elecciones actuales del usuario: slot (= nº de grupo 1..12) -> jugador
+  const ssRows = ((ssRes.data ?? []) as SSRow[]);
+  const initialByGroup: Record<number, string> = {};
+  for (const r of ssRows) if (r.slot >= 1 && r.slot <= 12) initialByGroup[r.slot] = r.player_id;
+
   const startStr = cfgRes.data?.group_stage_starts_at ?? firstRes.data?.kickoff_at ?? null;
   const locked = startStr ? Date.now() >= new Date(startStr).getTime() : false;
 
@@ -59,7 +67,7 @@ export default async function GoleadoresPage() {
         </>
       ) : (
         <>
-          <ScorersPicker players={players} initialSelected={selected} locked={locked} />
+          <ScorersPicker players={players} groups={groups} initialByGroup={initialByGroup} locked={locked} />
 
           <section className="mt-8">
             <div className="mb-2.5 flex items-center gap-2">
