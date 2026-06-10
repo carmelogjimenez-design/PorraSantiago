@@ -115,11 +115,17 @@ const DFX_CSS = `
 .dfx-rank3+.dfx-rank3{border-top:1px solid var(--border)}
 .dfx-foot{margin-top:24px;border-top:1px solid var(--border);padding-top:16px;font-size:12px;color:var(--text-dim);font-weight:600;opacity:.8}
 .dfx-ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dfx-brand{display:flex;align-items:center;gap:13px;position:relative}
+.dfx-brand-icon{width:52px;height:52px;flex:none;border-radius:14px;object-fit:cover;box-shadow:0 8px 22px -8px rgba(0,0,0,.5);outline:1px solid rgba(255,255,255,.22);outline-offset:-1px}
+.dfx-brand-name{font-family:var(--font-display),sans-serif;font-weight:800;font-size:18px;letter-spacing:-.01em;line-height:1}
+.dfx-brand-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);margin-top:4px}
+.dfx-live{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;letter-spacing:.12em;color:#fff;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.28);padding:14px 20px;border-radius:16px}
+.dfx-live-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:dfxpulse 1.6s infinite}
 @media(max-width:900px){.dfx-grid{grid-template-columns:1fr}.dfx-emblem{display:none}.dfx-groups{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.dfx-games{grid-template-columns:1fr}}
 @keyframes dfxmesh{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes dfxpulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.7)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
-@media(prefers-reduced-motion:reduce){.dfx-mesh{animation:none}.dfx-pulse{animation:none}}
+@media(prefers-reduced-motion:reduce){.dfx-mesh{animation:none}.dfx-pulse{animation:none}.dfx-live-dot{animation:none}}
 `;
 
 const I_BALL = (<svg className="dfx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7l3 2-1 3.5h-4L9 9z" /></svg>);
@@ -194,11 +200,14 @@ export default async function DashboardPage() {
         {/* HERO */}
         <section className="dfx-hero">
           <div className="dfx-mesh" /><div className="dfx-grain" /><div className="dfx-orb" />
-          <svg className="dfx-emblem" viewBox="0 0 200 200" fill="none" stroke="#fff" strokeWidth="2">
-            <circle cx="100" cy="100" r="60" /><circle cx="100" cy="100" r="3" fill="#fff" stroke="none" />
-            <path d="M100 46 L100 154 M70 70 L130 130 M130 70 L70 130" strokeWidth="1.2" opacity=".6" />
-          </svg>
-          <span className="dfx-badge"><span className="dfx-pulse" /> La Porra de Santiago · Mundial 2026</span>
+          <div className="dfx-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="dfx-brand-icon" src="/logo.png" alt="La Porra de Santiago" />
+            <div>
+              <div className="dfx-brand-name">La Porra de Santiago</div>
+              <div className="dfx-brand-sub">Mundial 2026 · 48 selecciones</div>
+            </div>
+          </div>
           <h1 className="dfx-h1">Predice.<br />Compite.<br /><span className="dfx-gw">Gana.</span></h1>
           <p className="dfx-lead">En Santiago todos sabéis más que el seleccionador. La porra dirá quién es el crack… y quién el cuñao.</p>
           <Countdown target={kickoff} />

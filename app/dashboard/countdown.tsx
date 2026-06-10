@@ -23,7 +23,7 @@ export default function Countdown({ target }: { target: string }) {
   if (mounted && c === null) {
     return (
       <div className="dfx-clock">
-        <div className="dfx-cl dfx-kick"><small>¡Que ya rueda</small><b>el balón! ⚽</b></div>
+        <div className="dfx-live"><span className="dfx-live-dot" /> EN JUEGO</div>
       </div>
     );
   }
@@ -34,7 +34,6 @@ export default function Countdown({ target }: { target: string }) {
       {cells.map(([n, l]) => (
         <div key={l} className="dfx-cl"><div className="dfx-n">{pad(n)}</div><div className="dfx-l">{l}</div></div>
       ))}
-      <div className="dfx-cl dfx-kick"><small>Falta para el</small><b>saque inicial ⚽</b></div>
     </div>
   );
 }
