@@ -2,45 +2,36 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Icon from "../components/icons";
-
 export const dynamic = "force-dynamic";
-
 type LbRow = { user_id: string; display_name: string; total_points: number | string };
-
 export default async function PremiosPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-
   const [profileRes, myPtsRes, paidRes, lbRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
     supabase.rpc("get_paid_count"),
     supabase.rpc("get_leaderboard"),
   ]);
-
   const name = profileRes.data?.display_name ?? "Jugador";
   const points = Number(myPtsRes.data ?? 0);
   const n = Number(paidRes.data ?? 0);
   const bote = 10 * n;
-
   const lb = ((lbRes.data ?? []) as LbRow[]).map((r) => ({ ...r, total_points: Number(r.total_points) }));
   const top = lb[0];
   const fase1Leader = top && top.total_points > 0 ? top.display_name : "Por decidir";
-
   const prizes = [
-    { icon: "target", label: "Goleadores", amount: 2 * n, winner: "Por decidir", note: "Quien más acierte con sus 3 goleadores." },
+    { icon: "target", label: "Goleadores", amount: 2 * n, winner: "Por decidir", note: "Quien más puntúe con sus goleadores: 1 por grupo (12) · 3 pts por gol." },
     { icon: "ball", label: "Fase de grupos", amount: 3 * n, winner: fase1Leader, note: "Líder al acabar la fase de grupos." },
     { icon: "trophy", label: "Fase final", amount: 5 * n, winner: "Por decidir", note: "Campeón de la porra al acabar el Mundial." },
   ];
-
   return (
     <AppShell userName={name} points={points}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Premios</h1>
       <p className="mt-1 text-sm text-[var(--text-dim)]">
         Cada jugador aporta <b className="text-[var(--text)]">10€</b> con su Bizum. El bote se reparte así: 2€ goleadores · 3€ fase de grupos · 5€ fase final.
       </p>
-
       {/* Bote total */}
       <div className="card mt-5 overflow-hidden p-0">
         <div className="bg-[var(--accent)] p-6 text-center text-white">
@@ -56,7 +47,6 @@ export default async function PremiosPage() {
           </div>
         )}
       </div>
-
       {/* Premios */}
       <div className="mt-6 space-y-3">
         {prizes.map((p) => (
@@ -77,7 +67,6 @@ export default async function PremiosPage() {
           </div>
         ))}
       </div>
-
       <p className="mt-5 text-center text-[11px] text-[var(--text-dim)]">
         Los importes se actualizan solos según cuántos jugadores hayan hecho el Bizum.
       </p>
