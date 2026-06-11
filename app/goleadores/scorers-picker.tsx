@@ -53,15 +53,12 @@ export default function ScorersPicker({
   const pick = (gid: number, id: string) => { setPicks((p) => ({ ...p, [gid]: id })); setOpen(null); setQuery(""); };
   const clear = (gid: number) => setPicks((p) => { const n = { ...p }; delete n[gid]; return n; });
 
-  // 🤡 Popup cachondo al completar los 12 grupos (no salta al cargar si ya estaban hechos)
-  const initiallyComplete = groups.filter((g) => initialByGroup[g.id]).length === 12;
+  // 🤡 Popup cachondo: salta al GUARDAR con los 12 grupos completos
   const [showRoast, setShowRoast] = useState(false);
-  const [roastFired, setRoastFired] = useState(initiallyComplete);
   useEffect(() => {
-    if (locked) return;
-    if (chosenCount === 12 && !roastFired) { setShowRoast(true); setRoastFired(true); }
-    else if (chosenCount < 12 && roastFired) { setRoastFired(false); }
-  }, [chosenCount, roastFired, locked]);
+    if (state?.ok && chosenCount === 12) setShowRoast(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <div className="min-w-0">
