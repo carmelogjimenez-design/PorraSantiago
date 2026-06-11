@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useActionState } from "react";
+import { useMemo, useState, useEffect, useActionState } from "react";
 import { saveGroupScorers, type ScorerGroupState } from "./group-actions";
 
 export type PlayerVM = { id: string; name: string; pos: string; team: string; flag: string | null; groupId: number };
@@ -52,6 +52,16 @@ export default function ScorersPicker({
   const chosenCount = groups.filter((g) => picks[g.id]).length;
   const pick = (gid: number, id: string) => { setPicks((p) => ({ ...p, [gid]: id })); setOpen(null); setQuery(""); };
   const clear = (gid: number) => setPicks((p) => { const n = { ...p }; delete n[gid]; return n; });
+
+  // 🤡 Popup cachondo al completar los 12 grupos (no salta al cargar si ya estaban hechos)
+  const initiallyComplete = groups.filter((g) => initialByGroup[g.id]).length === 12;
+  const [showRoast, setShowRoast] = useState(false);
+  const [roastFired, setRoastFired] = useState(initiallyComplete);
+  useEffect(() => {
+    if (locked) return;
+    if (chosenCount === 12 && !roastFired) { setShowRoast(true); setRoastFired(true); }
+    else if (chosenCount < 12 && roastFired) { setRoastFired(false); }
+  }, [chosenCount, roastFired, locked]);
 
   return (
     <div className="min-w-0">
@@ -177,6 +187,29 @@ export default function ScorersPicker({
             </button>
           </div>
         </form>
+      )}
+
+      {/* 🤡 Popup cachondo al completar los 12 grupos */}
+      {showRoast && (
+        <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true">
+          <style dangerouslySetInnerHTML={{ __html: "@keyframes roastPop{0%{transform:scale(.82) translateY(12px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}" }} />
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setShowRoast(false)} />
+          <div className="relative w-full max-w-sm rounded-[28px] border border-[var(--border)] bg-white p-7 text-center shadow-2xl"
+            style={{ animation: "roastPop .38s cubic-bezier(.2,.9,.3,1.35)" }}>
+            <div className="text-5xl">🤡⚽</div>
+            <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">¡Los 12 fichados!</h3>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-[var(--text-dim)]">
+              De nada sirve que hayas usado la <b className="text-[var(--text)]">IA</b> para hacer esta selección…
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-extrabold text-[var(--accent-deep)]">
+              porque vas a perder por paquete. 💀
+            </p>
+            <button onClick={() => setShowRoast(false)}
+              className="mt-6 w-full rounded-2xl bg-[var(--accent)] px-5 py-3 text-sm font-extrabold text-white transition hover:bg-[var(--accent-deep)] active:scale-95">
+              Vale, listillo 😤
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
