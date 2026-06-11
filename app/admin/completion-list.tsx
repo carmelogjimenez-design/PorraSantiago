@@ -4,7 +4,7 @@ import { useState } from "react";
 
 type Row = { user_id: string; display_name: string; matches_done: number; groups_done: number; scorers_done: number };
 const GROUPS_TOTAL = 12;
-const SCORERS_TOTAL = 3;
+const SCORERS_TOTAL = 12;
 
 export default function CompletionList({ rows, matchesTotal }: { rows: Row[]; matchesTotal: number }) {
   const [onlyMissing, setOnlyMissing] = useState(false);
