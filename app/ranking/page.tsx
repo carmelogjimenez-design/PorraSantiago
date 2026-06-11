@@ -120,7 +120,7 @@ export default async function RankingPage() {
         </div>
       )}
 
-      <RankingTimeline meId={user.id} />
+      <RankingTimeline meId={user.id} live={lb.map((r) => ({ user_id: r.user_id, display_name: r.display_name, total_points: r.total_points }))} />
 
       {topHasPoints ? (
         <div className="card mt-5 flex items-end justify-center gap-3 p-6">
