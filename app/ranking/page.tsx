@@ -6,6 +6,7 @@ import Avatar from "../components/avatar";
 import Icon from "../components/icons";
 import RankingTools from "./ranking-tools";
 import RankingTimeline from "./timeline";
+import RankingMofa from "./mofa";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,10 @@ export default async function RankingPage() {
     "🏆 LA PORRA DE SANTIAGO\nClasificación:\n" +
     shareLines.join("\n") +
     "\n\n👉 https://porra-santiago.vercel.app";
+  const others = lb
+    .map((r, i) => ({ name: r.display_name, points: r.total_points, rank: i + 1, isMe: r.user_id === user.id }))
+    .filter((r) => !r.isMe)
+    .map(({ name, points, rank }) => ({ name, points, rank }));
   const rivals = lb
     .filter((r) => r.user_id !== user.id)
     .map((r) => ({ id: r.user_id, name: r.display_name, points: r.total_points }));
@@ -86,6 +91,10 @@ export default async function RankingPage() {
 
       {rivals.length > 0 && (
         <RankingTools shareText={shareText} meName={myName} mePoints={myPoints} rivals={rivals} />
+      )}
+
+      {others.length > 0 && (
+        <RankingMofa players={others} meName={myName} mePoints={Number(myPoints)} />
       )}
 
       {taunt && (
