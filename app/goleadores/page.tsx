@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import ScorersPicker, { type PlayerVM } from "./scorers-picker";
+import Avatar from "../components/avatar";
 export const dynamic = "force-dynamic";
 type PlayerRow = { id: string; full_name: string; position: string | null; team_id: string; goals: number | null; goals_override: number | null };
 type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
@@ -11,7 +12,7 @@ export default async function GoleadoresPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [profileRes, myPtsRes, players1Res, players2Res, teamsRes, ssRes, cfgRes, firstRes, groupsRes] = await Promise.all([
+  const [profileRes, myPtsRes, players1Res, players2Res, teamsRes, ssRes, cfgRes, firstRes, groupsRes, scorerLbRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
     supabase.from("players").select("id,full_name,position,team_id,goals,goals_override").order("full_name").range(0, 999),
@@ -21,6 +22,7 @@ export default async function GoleadoresPage() {
     supabase.from("tournament_config").select("group_stage_starts_at").eq("id", 1).maybeSingle(),
     supabase.from("matches").select("kickoff_at").order("kickoff_at").limit(1).maybeSingle(),
     supabase.from("groups").select("id,label").order("id"),
+    supabase.rpc("get_scorer_leaderboard"),
   ]);
   const name = profileRes.data?.display_name ?? "Jugador";
   const points = Number(myPtsRes.data ?? 0);
@@ -53,6 +55,17 @@ export default async function GoleadoresPage() {
     .filter((p) => p.goals > 0)
     .sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name))
     .slice(0, 10);
+  // Clasificación del premio de goleadores (vía RPC security-definer)
+  type ScRow = { user_id: string; display_name: string; avatar_url: string | null; goals_total: number | string; points: number | string };
+  const scorerLb = ((scorerLbRes.data ?? []) as ScRow[]).map((r) => ({
+    user_id: r.user_id,
+    display_name: r.display_name,
+    avatar_url: r.avatar_url,
+    goals_total: Number(r.goals_total),
+    points: Number(r.points),
+  }));
+  const scorerHasPoints = scorerLb.some((r) => r.points > 0);
+
   return (
     <AppShell userName={name} points={points}>
       {players.length === 0 ? (
@@ -68,6 +81,47 @@ export default async function GoleadoresPage() {
       ) : (
         <>
           <ScorersPicker players={players} groups={groups} initialByGroup={initialByGroup} locked={locked} />
+
+          <section className="mt-8">
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="text-lg">🥇</span>
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Clasificación goleadores</h2>
+            </div>
+            <p className="mb-2.5 text-sm text-[var(--text-dim)]">Quién va ganando el premio de goleadores. 3 pts por cada gol de tus elegidos.</p>
+            {!scorerHasPoints ? (
+              <div className="card p-6 text-center">
+                <div className="text-3xl">🥅</div>
+                <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--text-dim)]">
+                  Aún no ha puntuado nadie. Esto se llena en cuanto tus goleadores empiecen a marcar.
+                </p>
+              </div>
+            ) : (
+              <div className="card overflow-hidden p-0">
+                {scorerLb.map((r, i) => {
+                  const isMe = r.user_id === user.id;
+                  return (
+                    <div key={r.user_id} className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""} ${isMe ? "bg-[var(--accent-soft)]" : ""}`}>
+                      <span
+                        className={`grid h-7 w-7 flex-none place-items-center rounded-full text-xs font-extrabold ${i < 3 ? "text-white" : "bg-[var(--soft)] text-[var(--text-dim)]"}`}
+                        style={i < 3 ? { background: POS[i] } : undefined}>
+                        {i + 1}
+                      </span>
+                      <Avatar src={r.avatar_url} name={r.display_name} className="h-9 w-9" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold">
+                          {r.display_name}{isMe && <span className="text-[var(--accent)]"> (Tú)</span>}
+                        </span>
+                        <span className="block text-[11px] text-[var(--text-dim)]">{r.goals_total} {r.goals_total === 1 ? "gol" : "goles"}</span>
+                      </span>
+                      <span className="flex-none font-[family-name:var(--font-display)] text-lg font-extrabold">
+                        {r.points}<span className="ml-0.5 text-[11px] font-bold text-[var(--text-dim)]">pts</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           <section className="mt-8">
             <div className="mb-2.5 flex items-center gap-2">
