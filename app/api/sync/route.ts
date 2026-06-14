@@ -30,7 +30,7 @@ function groupLetter(raw: string): string {
   return String(raw || "").trim().slice(-1).toUpperCase(); // "GROUP_A" -> "A"
 }
 
-// --- Cruce aproximado de goleadores por apellido (+ inicial para desempatar) ---
+// --- Cruce de goleadores por tokens compartidos del nombre ---
 function norm(s: string): string {
   return (s || "")
     .toLowerCase()
@@ -41,26 +41,49 @@ function norm(s: string): string {
     .trim();
 }
 
+// Partículas/sufijos que NO sirven para identificar (apellidos compuestos, "Jr", etc.)
+const STOP = new Set([
+  "jr", "junior", "sr", "ii", "iii", "iv", "neto", "filho",
+  "de", "da", "do", "dos", "das", "del", "della", "di", "den",
+  "van", "von", "der", "el", "al", "bin", "ben", "la", "le",
+]);
+
+// Tokens significativos: len>=3 y no partícula
+function sigTokens(name: string): string[] {
+  return norm(name).split(" ").filter((t) => t.length >= 3 && !STOP.has(t));
+}
+
 function matchScorer(
   scorerName: string,
   candidates: Array<{ id: string; full_name: string }>
 ): { id: string } | null {
-  const sTokens = norm(scorerName).split(" ").filter(Boolean);
-  if (!sTokens.length) return null;
+  const sAll = norm(scorerName).split(" ").filter(Boolean);
+  const sSig = sigTokens(scorerName);
+  const sSet = new Set<string>(sSig.length ? sSig : sAll); // fallback si no hay significativos
+  if (!sSet.size) return null;
+
   let best: { id: string } | null = null;
   let bestScore = -1;
+
   for (const c of candidates) {
-    const tokens = norm(c.full_name).split(" ").filter(Boolean);
-    const significant = tokens.filter((t) => t.length > 1);
-    if (!significant.length) continue;
-    const surname = significant[significant.length - 1]; // apellido de la camiseta
-    if (!sTokens.includes(surname)) continue; // el apellido debe aparecer en el nombre del goleador
-    let score = surname.length;
-    const initial = tokens.find((t) => t.length === 1) || null; // p.ej. "l" en "l. martinez"
-    if (initial) {
-      if (sTokens[0] && sTokens[0][0] === initial) score += 5; // inicial coincide -> probable
-      else score -= 3; // inicial distinta -> penaliza
+    const cAll = norm(c.full_name).split(" ").filter(Boolean);
+    const cSig = sigTokens(c.full_name);
+    const cTokens = cSig.length ? cSig : cAll;
+
+    // nº de tokens significativos compartidos (en cualquier orden)
+    let shared = 0;
+    let sharedLen = 0;
+    for (const t of cTokens) {
+      if (sSet.has(t)) { shared++; sharedLen += t.length; }
     }
+    if (shared === 0) continue; // sin ningún token en común -> no es
+
+    let score = shared * 100 + sharedLen;
+
+    // bonus si la inicial de la camiseta ("L. Martinez") coincide con el nombre del goleador
+    const initial = cAll.find((t) => t.length === 1) || null;
+    if (initial && sAll[0] && sAll[0][0] === initial) score += 5;
+
     if (score > bestScore) { bestScore = score; best = { id: c.id }; }
   }
   return best;
@@ -198,7 +221,7 @@ export async function GET(request: Request) {
     }
     summary.advanced = advancedApi.size;
 
-    // SCORERS -> players.goals (cruce aproximado por equipo + apellido)
+    // SCORERS -> players.goals (cruce por tokens compartidos; respeta goals_override)
     try {
       const scData = await apiGet(`/competitions/${COMP}/scorers?limit=100`);
       const scorers = (scData.scorers ?? []) as Array<Record<string, unknown>>;
@@ -216,10 +239,12 @@ export async function GET(request: Request) {
         byTeam.set(p.team_id, arr);
       }
 
-      // reiniciar goles y aplicar los del ranking de goleadores
+      // reiniciar goles AUTOMÁTICOS y aplicar los del ranking de goleadores
+      // (solo toca players.goals; players.goals_override -el manual- nunca se modifica aquí)
       await supabase.from("players").update({ goals: 0 }).gte("goals", 0);
 
       const updates: Array<{ id: string; goals: number }> = [];
+      const used = new Set<string>(); // evita asignar el mismo jugador 2 veces
       for (const s of scorers) {
         const team = s.team as { id: number } | undefined;
         const player = s.player as { name: string } | undefined;
@@ -227,9 +252,9 @@ export async function GET(request: Request) {
         if (!team || !player || !goals) continue;
         const mapped = teamByApi.get(team.id);
         if (!mapped) continue;
-        const cand = byTeam.get(mapped.id) ?? [];
+        const cand = (byTeam.get(mapped.id) ?? []).filter((c) => !used.has(c.id));
         const hit = matchScorer(player.name, cand);
-        if (hit) updates.push({ id: hit.id, goals });
+        if (hit) { updates.push({ id: hit.id, goals }); used.add(hit.id); }
       }
       await Promise.all(updates.map((u) => supabase.from("players").update({ goals: u.goals }).eq("id", u.id)));
       summary.scorers = updates.length;
