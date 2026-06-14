@@ -235,6 +235,15 @@ export async function GET(request: Request) {
     }
     summary.advanced = advancedApi.size;
 
+    // PRÓXIMA FASE: primer partido de eliminatorias (para el countdown de "Fase final")
+    const koDates = ((mData.matches ?? []) as Array<Record<string, unknown>>)
+      .filter((m) => m.stage && m.stage !== "GROUP_STAGE" && m.utcDate)
+      .map((m) => String(m.utcDate))
+      .sort();
+    if (koDates.length) {
+      try { await supabase.from("tournament_config").update({ knockout_starts_at: koDates[0] }).eq("id", 1); } catch { /* no rompe el sync */ }
+    }
+
     // SCORERS -> players.goals (cruce por tokens compartidos; respeta goals_override)
     try {
       const scData = await apiGet(`/competitions/${COMP}/scorers?limit=100`);

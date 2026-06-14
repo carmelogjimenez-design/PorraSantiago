@@ -1,20 +1,18 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "./icons";
 import Avatar from "./avatar";
-
 const BIZUM = "+34 635 80 25 46";
-
 const NAV = [
   { href: "/dashboard", label: "Inicio", icon: "home" },
   { href: "/grupos", label: "Fase de grupos", icon: "ball" },
   { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
+  { href: "/fase-final", label: "Fase final", icon: "trophy" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/trivial", label: "Trivial", icon: "bulb" },
@@ -28,6 +26,7 @@ const MOBILE = [
 ];
 const MORE = [
   { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
+  { href: "/fase-final", label: "Fase final", icon: "trophy" },
   { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/trivial", label: "Trivial", icon: "bulb" },
@@ -35,24 +34,20 @@ const MORE = [
   { href: "/perfil", label: "Perfil", icon: "user" },
 ];
 const active = (p: string, h: string) => (h === "/dashboard" ? p === "/dashboard" : p.startsWith(h));
-
 async function doSignOut() {
   try { await createClient().auth.signOut(); } catch {}
   window.location.href = "/login";
 }
-
 export default function AppShell({
   userName, points, children,
 }: { userName: string; points: number; children: React.ReactNode }) {
   const pathname = usePathname();
-
   const [status, setStatus] = useState<"loading" | "paid" | "unpaid">("loading");
   const [onboarded, setOnboarded] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
-
   useEffect(() => {
     const supabase = createClient();
     (async () => {
@@ -67,12 +62,10 @@ export default function AppShell({
       if (unpaid) setPayOpen(true);
     })();
   }, []);
-
   const closeOnboarding = async () => {
     setOnboarded(true);
     if (userId) { try { await createClient().from("profiles").update({ onboarded: true }).eq("id", userId); } catch {} }
   };
-
   if (status === "loading") {
     return (
       <div className="grid min-h-dvh place-items-center">
@@ -80,13 +73,10 @@ export default function AppShell({
       </div>
     );
   }
-
   const onboarding = !onboarded ? <Onboarding onClose={closeOnboarding} /> : null;
-
   return (
     <div className="mx-auto grid min-h-dvh max-w-[1240px] lg:grid-cols-[248px_1fr]">
       {onboarding}
-
       {status === "unpaid" && (
         <>
           <button onClick={() => setPayOpen(true)}
@@ -98,7 +88,6 @@ export default function AppShell({
             onPaid={() => { setStatus("paid"); setPayOpen(false); }} />
         </>
       )}
-
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-[var(--border)] bg-white px-4 py-5 lg:flex">
         <Link href="/dashboard" className="flex flex-col items-center border-b border-[var(--border)] pb-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -106,7 +95,6 @@ export default function AppShell({
           <div className="mt-2 text-base font-extrabold tracking-tight">LA PORRA</div>
           <div className="text-[11px] font-bold tracking-[0.26em] text-[var(--text-dim)]">DE SANTIAGO</div>
         </Link>
-
         <nav className="mt-4 flex flex-col gap-1">
           {NAV.map((n) => {
             const on = active(pathname, n.href);
@@ -119,7 +107,6 @@ export default function AppShell({
             );
           })}
         </nav>
-
         <div className="mt-auto flex flex-col gap-2">
           <Link href="/perfil" className="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-2.5">
             <Avatar src={avatar} name={userName} className="h-10 w-10" />
@@ -135,7 +122,6 @@ export default function AppShell({
           </button>
         </div>
       </aside>
-
       <div className="min-w-0">
         <div className="flex items-center justify-between border-b border-[var(--border)] bg-white px-4 py-3 lg:hidden">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -149,7 +135,6 @@ export default function AppShell({
         </div>
         <div className="px-4 pb-28 pt-5 lg:px-7 lg:pb-10">{children}</div>
       </div>
-
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[var(--border)] bg-white/95 backdrop-blur-lg lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {MOBILE.map((n) => {
@@ -166,7 +151,6 @@ export default function AppShell({
           <Icon name="menu" className="h-[22px] w-[22px]" />Más
         </button>
       </nav>
-
       {moreOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMoreOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -195,7 +179,6 @@ export default function AppShell({
     </div>
   );
 }
-
 /* ---------- Popup de bienvenida (una vez por usuario) ---------- */
 function Onboarding({ onClose }: { onClose: () => void }) {
   const steps = [
@@ -222,15 +205,12 @@ function Onboarding({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
-
 /* ---------- Aviso de Bizum (no bloquea: puede jugar pero insiste) ---------- */
 function PaymentReminder({ open, userId, onClose, onPaid }: { open: boolean; userId: string | null; onClose: () => void; onPaid: () => void }) {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   if (!open) return null;
-
   const check = async () => {
     if (!userId) return;
     setPending(true); setError(null);
@@ -244,7 +224,6 @@ function PaymentReminder({ open, userId, onClose, onPaid }: { open: boolean; use
   const copy = async () => {
     try { await navigator.clipboard.writeText(BIZUM.replace(/\s/g, "")); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   };
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
