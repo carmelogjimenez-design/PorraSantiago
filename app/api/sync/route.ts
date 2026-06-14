@@ -62,19 +62,33 @@ function matchScorer(
   const sSet = new Set<string>(sSig.length ? sSig : sAll); // fallback si no hay significativos
   if (!sSet.size) return null;
 
+  const sArr = [...sSet];
   let best: { id: string } | null = null;
   let bestScore = -1;
+
+  // ¿coincide el token de la camiseta con alguno del goleador?
+  // exacto, o por prefijo (>=3 letras): "vini" ~ "vinicius", "gabi" ~ "gabriel"
+  const tokenHit = (t: string): number => {
+    if (sSet.has(t)) return t.length + 2; // match exacto: mejor
+    for (const st of sArr) {
+      if (st.length >= 3 && t.length >= 3 && (st.startsWith(t) || t.startsWith(st))) {
+        return Math.min(st.length, t.length); // match por prefijo
+      }
+    }
+    return 0;
+  };
 
   for (const c of candidates) {
     const cAll = norm(c.full_name).split(" ").filter(Boolean);
     const cSig = sigTokens(c.full_name);
     const cTokens = cSig.length ? cSig : cAll;
 
-    // nº de tokens significativos compartidos (en cualquier orden)
+    // tokens de la camiseta que encajan con el nombre del goleador (exacto o prefijo)
     let shared = 0;
     let sharedLen = 0;
     for (const t of cTokens) {
-      if (sSet.has(t)) { shared++; sharedLen += t.length; }
+      const h = tokenHit(t);
+      if (h > 0) { shared++; sharedLen += h; }
     }
     if (shared === 0) continue; // sin ningún token en común -> no es
 
