@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { saveAdminPredictions } from "./actions";
 
 type Player = { id: string; display_name: string | null };
-type Match = { id: string; group_id: number; kickoff_at: string | null; home: string; away: string };
+type Match = { id: string; group_id: number | null; kickoff_at: string | null; home: string; away: string };
 type Group = { id: number; label: string };
 type Pred = { user_id: string; match_id: string; pred_home: number; pred_away: number };
 
@@ -26,13 +26,19 @@ export default function EditarForm({
 
   const groupLabel = useMemo(() => new Map(groups.map((g) => [g.id, g.label])), [groups]);
 
+  // Agrupa por group_id; los partidos sin grupo (null) van a la clave -1 ("Otros")
   const byGroup = useMemo(() => {
     const map = new Map<number, Match[]>();
     for (const m of matches) {
-      if (!map.has(m.group_id)) map.set(m.group_id, []);
-      map.get(m.group_id)!.push(m);
+      const key = m.group_id ?? -1;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(m);
     }
-    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+    return Array.from(map.entries()).sort((a, b) => {
+      const ka = a[0] === -1 ? 9999 : a[0]; // "Otros" al final
+      const kb = b[0] === -1 ? 9999 : b[0];
+      return ka - kb;
+    });
   }, [matches]);
 
   function pickPlayer(id: string) {
@@ -130,7 +136,9 @@ export default function EditarForm({
           <div className="mt-4 space-y-5">
             {byGroup.map(([gid, ms]) => (
               <div key={gid} className="card p-4">
-                <div className="mb-2 text-sm font-extrabold">Grupo {groupLabel.get(gid) ?? gid}</div>
+                <div className="mb-2 text-sm font-extrabold">
+                  {gid === -1 ? "Otros partidos (eliminatoria / sin grupo)" : `Grupo ${groupLabel.get(gid) ?? gid}`}
+                </div>
                 <div className="space-y-2">
                   {ms.map((m) => (
                     <div key={m.id} className="flex items-center gap-2">
