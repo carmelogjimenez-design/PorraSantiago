@@ -85,6 +85,18 @@ export default function MatchCard({ m, lockAt }: { m: MatchVM; lockAt: number })
   });
   const justSaved = state?.ok;
 
+  // --- Desglose de puntos del partido (solo si está jugado) ---
+  const resultPts = m.points ?? 0;
+  const total = resultPts + m.scorerBonus;
+  let resultReason = "No pronosticaste";
+  if (m.predHome != null && m.predAway != null) {
+    const ah = m.homeScore ?? 0, aw = m.awayScore ?? 0;
+    if (m.predHome === ah && m.predAway === aw) resultReason = "Resultado exacto";
+    else if (Math.sign(m.predHome - m.predAway) === Math.sign(ah - aw))
+      resultReason = ah === aw ? "Acertaste el empate" : "Acertaste el ganador";
+    else resultReason = "No acertaste";
+  }
+
   return (
     <div className={`card p-3.5 ${live ? "border-[var(--accent)]" : ""}`}>
       <div className="mb-3 flex items-center justify-between text-[11px] text-[var(--text-dim)]">
@@ -146,16 +158,45 @@ export default function MatchCard({ m, lockAt }: { m: MatchVM; lockAt: number })
               <Flag src={m.awayFlag} name={m.awayName} />
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2.5 text-xs">
-            {m.predHome != null
-              ? <span className="text-[var(--text-dim)]">Tu pronóstico: <b className="text-[var(--text)]">{m.predHome}-{m.predAway}</b></span>
-              : <span className="text-[var(--text-dim)]">No pronosticaste</span>}
-            {finished && m.points != null && (
-              <span className={`rounded-full px-2.5 py-1 font-extrabold ${m.points > 0 ? "bg-[var(--accent-soft)] text-[var(--accent-deep)]" : "bg-[var(--soft)] text-[var(--text-dim)]"}`}>
-                +{m.points} pts
-              </span>
-            )}
-          </div>
+
+          {finished ? (
+            <div className="mt-3 border-t border-[var(--border)] pt-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                {m.predHome != null
+                  ? <span className="text-[var(--text-dim)]">Tu pronóstico: <b className="text-[var(--text)]">{m.predHome}-{m.predAway}</b></span>
+                  : <span className="text-[var(--text-dim)]">No pronosticaste</span>}
+                <span className={`rounded-full px-2.5 py-1 font-extrabold ${total > 0 ? "bg-[var(--accent-soft)] text-[var(--accent-deep)]" : "bg-[var(--soft)] text-[var(--text-dim)]"}`}>
+                  +{total} pts
+                </span>
+              </div>
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[var(--text-dim)]">{resultReason}</span>
+                  <span className={`font-bold ${resultPts > 0 ? "text-[var(--accent-deep)]" : "text-[var(--text-dim)]"}`}>+{resultPts}</span>
+                </div>
+                {m.scorerHits.map((h, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2">
+                    <span className="text-[var(--text-dim)]">
+                      ⚽ Tu goleador {h.name}{h.goals > 1 ? ` ×${h.goals}` : ""} <span className="opacity-70">(est.)</span>
+                    </span>
+                    <span className="font-bold text-[var(--accent-deep)]">+{h.goals * 3}</span>
+                  </div>
+                ))}
+              </div>
+              {m.scorerHits.length > 0 && (
+                <div className="mt-1.5 text-[10px] text-[var(--text-dim)]">
+                  (est.) = el gol se atribuye por fechas; el total de cada goleador es exacto.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2.5 text-xs">
+              {m.predHome != null
+                ? <span className="text-[var(--text-dim)]">Tu pronóstico: <b className="text-[var(--text)]">{m.predHome}-{m.predAway}</b></span>
+                : <span className="text-[var(--text-dim)]">No pronosticaste</span>}
+            </div>
+          )}
+
           {started && <PeerPredictions matchId={m.id} homeScore={m.homeScore} awayScore={m.awayScore} finished={finished} />}
         </>
       )}

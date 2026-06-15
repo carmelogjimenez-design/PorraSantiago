@@ -8,6 +8,7 @@ export type MatchVM = {
   status: string; homeScore: number | null; awayScore: number | null;
   homeName: string; homeFlag: string | null; awayName: string; awayFlag: string | null;
   predHome: number | null; predAway: number | null; points: number | null;
+  scorerBonus: number; scorerHits: { name: string; goals: number }[];
 };
 export type GroupVM = { id: number; label: string; teams: string[] };
 
