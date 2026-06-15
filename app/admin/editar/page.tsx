@@ -22,7 +22,7 @@ export default async function EditarPage() {
     admin.from("profiles").select("id,display_name").order("display_name", { ascending: true }),
     admin.from("matches").select("id,group_id,home_team_id,away_team_id,kickoff_at"),
     admin.from("teams").select("id,name"),
-    admin.from("predictions").select("user_id,match_id,pred_home,pred_away"),
+    admin.from("predictions").select("user_id,match_id,pred_home,pred_away").range(0, 99999),
     admin.from("groups").select("id,label").order("id", { ascending: true }),
   ]);
   const players = (playersRes.data ?? []) as { id: string; display_name: string | null }[];
