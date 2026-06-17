@@ -91,9 +91,11 @@ export default function MatchCard({ m, lockAt }: { m: MatchVM; lockAt: number })
   let resultReason = "No pronosticaste";
   if (m.predHome != null && m.predAway != null) {
     const ah = m.homeScore ?? 0, aw = m.awayScore ?? 0;
+    const pd = m.predHome - m.predAway, rd = ah - aw;
     if (m.predHome === ah && m.predAway === aw) resultReason = "Resultado exacto";
-    else if (Math.sign(m.predHome - m.predAway) === Math.sign(ah - aw))
-      resultReason = ah === aw ? "Acertaste el empate" : "Acertaste el ganador";
+    else if (m.predHome === m.predAway && ah === aw) resultReason = "Acertaste el empate";
+    else if (Math.sign(pd) === Math.sign(rd) && pd === rd) resultReason = "Ganador y diferencia de goles";
+    else if (Math.sign(pd) === Math.sign(rd)) resultReason = "Acertaste el ganador";
     else resultReason = "No acertaste";
   }
 

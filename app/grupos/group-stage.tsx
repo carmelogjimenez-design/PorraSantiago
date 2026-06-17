@@ -105,7 +105,7 @@ export default function GroupStage({ groups, matches }: { groups: GroupVM[]; mat
         Fase de grupos
       </h1>
       <p className="mt-1 text-sm text-[var(--text-dim)]">
-        Pon tu resultado exacto · 3 pts si lo clavas · 1 pt si aciertas el ganador.
+        Resultado exacto 8 pts · acierta la diferencia 5 · solo el 1X2 3 pts.
       </p>
 
       {/* sticky progress */}

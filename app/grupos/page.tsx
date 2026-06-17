@@ -12,9 +12,13 @@ type MatchRow = {
 };
 type PredRow = { match_id: string; pred_home: number; pred_away: number };
 type PlayerMini = { id: string; full_name: string; team_id: string; goals: number | null; goals_override: number | null };
+// Puntos del partido: 8 exacto / 5 mismo ganador+misma dif / 3 solo 1X2 (incl. empate no exacto) / 0 fallo
 function computePoints(ph: number, pa: number, ah: number, aw: number): number {
-  if (ph === ah && pa === aw) return 3;
-  return Math.sign(ph - pa) === Math.sign(ah - aw) ? 1 : 0;
+  if (ph === ah && pa === aw) return 8;
+  if (ph === pa && ah === aw) return 3; // empate acertado pero no exacto
+  if (Math.sign(ph - pa) === Math.sign(ah - aw) && (ph - pa) === (ah - aw)) return 5;
+  if (Math.sign(ph - pa) === Math.sign(ah - aw)) return 3;
+  return 0;
 }
 export default async function GruposPage() {
   const supabase = await createClient();
