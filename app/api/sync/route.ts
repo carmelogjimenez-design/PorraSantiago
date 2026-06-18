@@ -244,29 +244,28 @@ export async function GET(request: Request) {
       try { await supabase.from("tournament_config").update({ knockout_starts_at: koDates[0] }).eq("id", 1); } catch { /* no rompe el sync */ }
     }
 
-    // SCORERS -> players.goals (cruce por tokens compartidos; respeta goals_override)
+    // SCORERS -> players.goals (cruce por tokens; respeta goals_override)
     try {
       const scData = await apiGet(`/competitions/${COMP}/scorers?limit=100`);
       const scorers = (scData.scorers ?? []) as Array<Record<string, unknown>>;
 
       // cargar todos los jugadores (en dos tandas por el límite de 1000)
       const [pp1, pp2] = await Promise.all([
-        supabase.from("players").select("id,full_name,team_id").range(0, 999),
-        supabase.from("players").select("id,full_name,team_id").range(1000, 1999),
+        supabase.from("players").select("id,full_name,team_id,goals").range(0, 999),
+        supabase.from("players").select("id,full_name,team_id,goals").range(1000, 1999),
       ]);
-      const allPlayers = [...(pp1.data ?? []), ...(pp2.data ?? [])] as Array<{ id: string; full_name: string; team_id: string }>;
+      const allPlayers = [...(pp1.data ?? []), ...(pp2.data ?? [])] as Array<{ id: string; full_name: string; team_id: string; goals: number | null }>;
       const byTeam = new Map<string, Array<{ id: string; full_name: string }>>();
+      const goalsNow = new Map<string, number>();
       for (const p of allPlayers) {
         const arr = byTeam.get(p.team_id) ?? [];
         arr.push({ id: p.id, full_name: p.full_name });
         byTeam.set(p.team_id, arr);
+        goalsNow.set(p.id, p.goals ?? 0);
       }
 
-      // reiniciar goles AUTOMÁTICOS y aplicar los del ranking de goleadores
-      // (solo toca players.goals; players.goals_override -el manual- nunca se modifica aquí)
-      await supabase.from("players").update({ goals: 0 }).gte("goals", 0);
-
-      const updates: Array<{ id: string; goals: number }> = [];
+      // 1) Calcular el goleador objetivo de cada jugador (sin escribir todavía)
+      const target = new Map<string, number>(); // player_id -> goles según la API
       const used = new Set<string>(); // evita asignar el mismo jugador 2 veces
       for (const s of scorers) {
         const team = s.team as { id: number } | undefined;
@@ -277,10 +276,34 @@ export async function GET(request: Request) {
         if (!mapped) continue;
         const cand = (byTeam.get(mapped.id) ?? []).filter((c) => !used.has(c.id));
         const hit = matchScorer(player.name, cand);
-        if (hit) { updates.push({ id: hit.id, goals }); used.add(hit.id); }
+        if (hit) { target.set(hit.id, goals); used.add(hit.id); }
       }
-      await Promise.all(updates.map((u) => supabase.from("players").update({ goals: u.goals }).eq("id", u.id)));
-      summary.scorers = updates.length;
+
+      // 2) Escribir SOLO lo que cambia (diff), en serie y con reintento ante rate limit.
+      //    No tocamos goals_override (el manual). Y solo ponemos a 0 a quien ANTES
+      //    tenía goles y ahora ya no aparece como goleador -> nada de "borrón global".
+      const writes: Array<{ id: string; goals: number }> = [];
+      for (const [id, g] of target) {
+        if ((goalsNow.get(id) ?? 0) !== g) writes.push({ id, goals: g });
+      }
+      for (const [id, prev] of goalsNow) {
+        if (prev > 0 && !target.has(id)) writes.push({ id, goals: 0 }); // ya no es goleador
+      }
+
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      let okCount = 0;
+      let failCount = 0;
+      for (const w of writes) {
+        let done = false;
+        for (let attempt = 0; attempt < 3 && !done; attempt++) {
+          const { error } = await supabase.from("players").update({ goals: w.goals }).eq("id", w.id);
+          if (!error) { done = true; okCount++; }
+          else { await sleep(250 * (attempt + 1)); } // backoff: 250ms, 500ms, 750ms
+        }
+        if (!done) failCount++;
+      }
+      // Si quedó algún fallo, marcamos scorers como negativo para verlo en el log
+      summary.scorers = failCount > 0 ? -failCount : okCount;
     } catch (scErr) {
       // si /scorers falla (p.ej. aún sin datos), no rompemos el resto del sync
       summary.scorers = -1;
