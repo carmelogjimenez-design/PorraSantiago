@@ -1,10 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveFinalScorers, saveFinalPicks, type KoState } from "./actions";
+import { saveFinalScorers, type KoState } from "./actions";
 
 export type ScorerOpt = { id: string; name: string; team: string; flag: string | null; goals: number };
-export type TeamOpt = { id: string; name: string; flag: string | null };
 
 function FinalScorers({ options, initial }: { options: ScorerOpt[]; initial: string[] }) {
   const [state, action, pending] = useActionState<KoState, FormData>(saveFinalScorers, null);
@@ -66,60 +65,11 @@ function FinalScorers({ options, initial }: { options: ScorerOpt[]; initial: str
   );
 }
 
-function ChampionPicks({ teams, initialChamp, initialRunner }:
-  { teams: TeamOpt[]; initialChamp: string | null; initialRunner: string | null }) {
-  const [state, action, pending] = useActionState<KoState, FormData>(saveFinalPicks, null);
-  const [champ, setChamp] = useState<string>(initialChamp ?? "");
-  const [runner, setRunner] = useState<string>(initialRunner ?? "");
-
-  return (
-    <form action={action} className="card mt-4 p-4 sm:p-5">
-      <div className="flex items-center gap-2">
-        <span className="text-lg">🏆</span>
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Campeón y subcampeón</h2>
-      </div>
-      <p className="mt-1 text-[13px] text-[var(--text-dim)]">Acertar el campeón da 15 pts y el subcampeón 10 pts. Elígelos antes de los dieciseisavos.</p>
-
-      <div className="mt-3 space-y-3">
-        <div>
-          <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">🥇 Campeón (15 pts)</label>
-          <select name="champion_id" value={champ} onChange={(e) => setChamp(e.target.value)}
-            className="w-full rounded-xl border-[1.5px] border-[var(--border)] bg-white px-3.5 py-3 text-sm font-bold outline-none transition focus:border-[var(--accent)]">
-            <option value="">— Elige campeón —</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--text-dim)]">🥈 Subcampeón (10 pts)</label>
-          <select name="runnerup_id" value={runner} onChange={(e) => setRunner(e.target.value)}
-            className="w-full rounded-xl border-[1.5px] border-[var(--border)] bg-white px-3.5 py-3 text-sm font-bold outline-none transition focus:border-[var(--accent)]">
-            <option value="">— Elige subcampeón —</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-3">
-        <span className="text-xs">
-          {state?.error ? <span className="font-bold text-[var(--accent-deep)]">{state.error}</span>
-            : state?.ok ? <span className="font-extrabold text-[var(--green)]">✓ Guardado</span>
-            : <span className="text-[var(--text-dim)]">Elige y guarda.</span>}
-        </span>
-        <button type="submit" disabled={pending}
-          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-white transition active:scale-95 disabled:opacity-50">
-          {pending ? "..." : "Guardar"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-export default function FinalPrizes({ scorerOptions, initialScorers, teams, initialChamp, initialRunner }:
-  { scorerOptions: ScorerOpt[]; initialScorers: string[]; teams: TeamOpt[]; initialChamp: string | null; initialRunner: string | null }) {
+export default function FinalPrizes({ scorerOptions, initialScorers }:
+  { scorerOptions: ScorerOpt[]; initialScorers: string[] }) {
   return (
     <section className="mt-6">
       <FinalScorers options={scorerOptions} initial={initialScorers} />
-      <ChampionPicks teams={teams} initialChamp={initialChamp} initialRunner={initialRunner} />
     </section>
   );
 }

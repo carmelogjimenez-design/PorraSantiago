@@ -2,32 +2,32 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import KnockoutCountdown from "./countdown";
-import KoMatchCard, { type KoMatchVM } from "./ko-match-card";
-import FinalPrizes, { type ScorerOpt, type TeamOpt } from "./final-prizes";
+import BracketBuilder, { type BkR32VM, type BkInitial } from "./bracket-builder";
+import FinalPrizes, { type ScorerOpt } from "./final-prizes";
 import KoLeaderboard, { type KoLbRow } from "./ko-leaderboard";
 export const dynamic = "force-dynamic";
 
 type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
 type MatchRow = {
   id: string; round: string | null; home_team_id: string; away_team_id: string;
-  kickoff_at: string; status: string; home_score: number | null; away_score: number | null;
+  kickoff_at: string; status: string; home_score: number | null; away_score: number | null; api_fixture_id: number | null;
 };
 type PlayerRow = { id: string; full_name: string; team_id: string; goals: number | null; goals_override: number | null };
+type BracketRow = { slot: string; team_id: string | null; pred_home: number | null; pred_away: number | null };
 
 export default async function FaseFinalPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, myPtsRes, teamsRes, matchesRes, koPicksRes, ssRes, fsRes, fpRes, lbRes] = await Promise.all([
+  const [profileRes, myPtsRes, teamsRes, matchesRes, bracketRes, ssRes, fsRes, lbRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
     supabase.from("teams").select("id,name,flag_url,group_id"),
-    supabase.from("matches").select("id,round,home_team_id,away_team_id,kickoff_at,status,home_score,away_score").eq("round", "R32").order("kickoff_at"),
-    supabase.from("knockout_picks").select("match_id,pred_home,pred_away").eq("user_id", user.id),
+    supabase.from("matches").select("id,round,home_team_id,away_team_id,kickoff_at,status,home_score,away_score,api_fixture_id").eq("round", "R32").order("api_fixture_id"),
+    supabase.from("bracket_picks").select("slot,team_id,pred_home,pred_away").eq("user_id", user.id),
     supabase.from("selected_scorers").select("player_id,slot").eq("user_id", user.id).order("slot"),
     supabase.from("final_scorers").select("player_id").eq("user_id", user.id),
-    supabase.from("final_picks").select("champion_id,runnerup_id").eq("user_id", user.id).maybeSingle(),
     supabase.rpc("get_knockout_leaderboard"),
   ]);
 
@@ -36,23 +36,24 @@ export default async function FaseFinalPage() {
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
 
-  // Partidos R32 + mi pronóstico
-  const koPicks = new Map<string, { pred_home: number; pred_away: number }>(
-    ((koPicksRes.data ?? []) as Array<{ match_id: string; pred_home: number; pred_away: number }>).map((p) => [p.match_id, p])
-  );
+  // 16avos reales (ordenados de forma estable) -> entrada del cuadro
   const matches = (matchesRes.data ?? []) as MatchRow[];
-  const koMatches: KoMatchVM[] = matches.map((m) => {
+  const r32: BkR32VM[] = matches.map((m) => {
     const h = teamById.get(m.home_team_id);
     const a = teamById.get(m.away_team_id);
-    const pick = koPicks.get(m.id);
     return {
-      id: m.id, kickoffAt: m.kickoff_at, status: m.status,
-      homeName: h?.name ?? "?", homeFlag: h?.flag_url ?? null,
-      awayName: a?.name ?? "?", awayFlag: a?.flag_url ?? null,
-      homeScore: m.home_score, awayScore: m.away_score,
-      predHome: pick?.pred_home ?? null, predAway: pick?.pred_away ?? null,
+      matchId: m.id,
+      home: { id: m.home_team_id, name: h?.name ?? "?", flag: h?.flag_url ?? null },
+      away: { id: m.away_team_id, name: a?.name ?? "?", flag: a?.flag_url ?? null },
+      kickoff: m.kickoff_at, status: m.status,
     };
   });
+
+  // Mi cuadro guardado
+  const initial: BkInitial = {};
+  for (const r of (bracketRes.data ?? []) as BracketRow[]) {
+    initial[r.slot] = { teamId: r.team_id, predHome: r.pred_home, predAway: r.pred_away };
+  }
 
   // Mis 12 goleadores elegidos en grupos -> opciones para elegir 3
   const ssIds = ((ssRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id);
@@ -67,20 +68,10 @@ export default async function FaseFinalPage() {
   }
   const initialScorers = ((fsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id);
 
-  // Equipos para campeón/subcampeón: los 32 que están en R32 (vivos)
-  const aliveIds = new Set<string>();
-  for (const m of matches) { aliveIds.add(m.home_team_id); aliveIds.add(m.away_team_id); }
-  const teamOpts: TeamOpt[] = teams
-    .filter((t) => aliveIds.has(t.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((t) => ({ id: t.id, name: t.name, flag: t.flag_url }));
-  const initialChamp = fpRes.data?.champion_id ?? null;
-  const initialRunner = fpRes.data?.runnerup_id ?? null;
-
   const lbRows = (lbRes.data ?? []) as KoLbRow[];
 
-  // Countdown al primer partido R32
-  const firstKo = matches.length ? matches[0].kickoff_at : null;
+  // Countdown al primer dieciseisavos (el más temprano) + candado del cuadro
+  const firstKo = matches.length ? [...matches].map((m) => m.kickoff_at).sort()[0] : null;
   const whenLabel = firstKo
     ? new Date(firstKo).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
     : null;
@@ -97,32 +88,21 @@ export default async function FaseFinalPage() {
             <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[var(--accent)]">Arranca en</div>
             <KnockoutCountdown target={firstKo} whenLabel={whenLabel} />
             <p className="mx-auto mt-3 max-w-sm text-[13px] text-[var(--text-dim)]">
-              Cuenta atrás al primer dieciseisavos. Ya puedes pronosticar y elegir goleadores, campeón y subcampeón.
+              Cuenta atrás al primer dieciseisavos. Rellena tu cuadro entero y elige tus 3 goleadores antes de que arranque.
             </p>
           </div>
         </div>
       )}
 
-      {/* Premios: 3 goleadores + campeón/subcampeón */}
-      <FinalPrizes
-        scorerOptions={scorerOptions} initialScorers={initialScorers}
-        teams={teamOpts} initialChamp={initialChamp} initialRunner={initialRunner} />
+      {/* 3 goleadores */}
+      <FinalPrizes scorerOptions={scorerOptions} initialScorers={initialScorers} />
 
-      {/* Los 16 dieciseisavos */}
-      <section className="mt-8">
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="text-lg">⚔️</span>
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Dieciseisavos de final</h2>
-          <span className="ml-auto rounded-full bg-[var(--soft)] px-2.5 py-1 text-[11px] font-bold text-[var(--text-dim)]">{koMatches.length} partidos</span>
-        </div>
-        {koMatches.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-[var(--text-dim)]">Aún no hay partidos cargados.</div>
-        ) : (
-          <div className="grid gap-2.5 lg:grid-cols-2">
-            {koMatches.map((m) => <KoMatchCard key={m.id} m={m} />)}
-          </div>
-        )}
-      </section>
+      {/* El cuadro completo (sustituye a los dieciseisavos sueltos) */}
+      {r32.length === 0 ? (
+        <div className="card mt-8 p-6 text-center text-sm text-[var(--text-dim)]">Aún no hay partidos cargados.</div>
+      ) : (
+        <BracketBuilder r32={r32} initial={initial} locked={started} />
+      )}
 
       {/* Clasificación fase final */}
       <KoLeaderboard rows={lbRows} meId={user.id} />
