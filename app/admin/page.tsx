@@ -72,6 +72,16 @@ export default async function AdminPage() {
           </div>
           <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
         </a>
+        <a href="/admin/cuadro" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md sm:col-span-2">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">🗺️</span>
+            <div>
+              <div className="text-sm font-extrabold">Estado del cuadro</div>
+              <div className="text-[13px] text-[var(--text-dim)]">Quién tiene el cuadro de la fase final completo (31 cruces) y a quién avisar.</div>
+            </div>
+          </div>
+          <span className="text-lg font-bold text-[var(--text-dim)]">→</span>
+        </a>
         <a href="/admin/editar" className="card flex items-center justify-between gap-3 p-4 transition hover:shadow-md sm:col-span-2">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--accent-soft)] text-xl">✍️</span>
