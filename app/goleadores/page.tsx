@@ -80,9 +80,9 @@ export default async function GoleadoresPage() {
         </>
       ) : (
         <>
-          <ScorersPicker players={players} groups={groups} initialByGroup={initialByGroup} locked={locked} />
-
-          <section className="mt-8">
+          {/* 1) CLASIFICACIÓN GENERAL DE GOLEADORES */}
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Goleadores</h1>
+          <section className="mt-5">
             <div className="mb-2.5 flex items-center gap-2">
               <span className="text-lg">🥇</span>
               <h2 className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight">Clasificación goleadores</h2>
@@ -123,6 +123,12 @@ export default async function GoleadoresPage() {
             )}
           </section>
 
+          {/* 2) MIS GOLEADORES (el picker) */}
+          <section className="mt-8">
+            <ScorersPicker players={players} groups={groups} initialByGroup={initialByGroup} locked={locked} />
+          </section>
+
+          {/* 3) PICHICHIS DEL MUNDIAL */}
           <section className="mt-8">
             <div className="mb-2.5 flex items-center gap-2">
               <span className="text-lg">🏆</span>
