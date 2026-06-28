@@ -39,7 +39,7 @@ export default function PredictionsBoard({ matches, predsByMatch, isAdmin }: { m
 
   const waText = useMemo(() => {
     if (!match) return "";
-    const head = `🔮 PRONÓSTICOS DE LA PEÑA\n${match.group ? `Grupo ${match.group} · ` : ""}${match.homeName} - ${match.awayName}\n${fmt(match.kickoffAt)}\n\n`;
+    const head = `🔮 PRONÓSTICOS DE LA PEÑA\n${match.group ? `${match.group} · ` : ""}${match.homeName} - ${match.awayName}\n${fmt(match.kickoffAt)}\n\n`;
     const body = rows.map((r) => `• ${r.name}: ${r.ph}-${r.pa}`).join("\n");
     const tail = topScore && topScore.n > 1 ? `\n\n🔥 Lo más puesto: ${topScore.score} (${topScore.n} personas)` : "";
     return head + body + tail;
