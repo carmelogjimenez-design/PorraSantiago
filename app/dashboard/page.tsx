@@ -40,6 +40,21 @@ const DFX_CSS = `
 .dfx-h1{font-family:var(--font-display),sans-serif;font-weight:800;letter-spacing:-.03em;font-size:clamp(40px,6.6vw,72px);line-height:.9;margin-top:14px;color:var(--text)}
 .dfx-gw{background:linear-gradient(120deg,#FF2D55,#FF5C7A);-webkit-background-clip:text;background-clip:text;color:transparent}
 .dfx-lead{margin-top:15px;max-width:34ch;font-weight:500;font-size:15px;color:var(--text-dim)}
+.dfx-clock{margin-top:26px;display:inline-flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.dfx-cl{min-width:74px;text-align:center;padding:14px 8px;border-radius:18px;background:linear-gradient(180deg,#fff,#FFF4F7);border:1px solid var(--border);box-shadow:0 1px 2px rgba(20,15,20,.04),0 14px 30px -18px rgba(255,45,85,.45)}
+.dfx-n{font-family:var(--font-display),sans-serif;font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
+.dfx-l{margin-top:7px;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--accent)}
+.dfx-next{margin-top:24px}
+.dfx-next-h{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.dfx-next-teams{margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dfx-ct{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:17px;color:var(--text)}
+.dfx-vs{font-size:11px;font-weight:800;color:var(--text-dim)}
+.dfx-cflag{width:30px;height:21px;border-radius:4px;object-fit:cover;box-shadow:0 0 0 1px var(--border)}
+.dfx-cflag-empty{display:inline-block;background:var(--soft)}
+.dfx-next .dfx-clock{margin-top:14px}
+.dfx-kick{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:rgba(255,255,255,.95);min-width:auto;padding:13px 18px;text-align:left}
+.dfx-kick small{font-size:11px;font-weight:700;color:var(--text-dim)}
+.dfx-kick b{font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;margin-top:2px;color:var(--text)}
 .dfx-grid{display:grid;grid-template-columns:1fr 332px;gap:22px;margin-top:22px}
 .dfx-col{min-width:0;display:flex;flex-direction:column;gap:22px}
 .dfx-shead{display:flex;align-items:center;gap:10px;margin-bottom:13px}
