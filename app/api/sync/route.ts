@@ -113,7 +113,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, scorers: 0, advanced: 0 };
+  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, ko: 0, scorers: 0, advanced: 0 };
 
   try {
     const { data: groupsRows } = await supabase.from("groups").select("id,label");
@@ -220,6 +220,86 @@ export async function GET(request: Request) {
     }
     summary.matches = matchUpserts.length;
 
+    // ===================================================================
+    // KO MATCHES (FASE FINAL) -> engancha resultados de eliminatoria a TUS
+    // partidos manuales (R32, R16, QF, SF, FIN).
+    // - Se emparejan por los DOS equipos (no por api_fixture_id: el tuyo es
+    //   9001+ y NO coincide con el ID real de la API).
+    // - El cruce es por PAREJA (sin importar quién es local): si la API tiene
+    //   el partido con home/away al revés que tu ficha, se ALINEA el marcador
+    //   a TU orientación para no asignar los goles cambiados.
+    // - Marcador = resultado final INCLUIDA PRÓRROGA (Football-Data lo da en
+    //   score.fullTime; los penaltis no suman goles, así que no cuentan aquí).
+    // - Respeta manual_override (si lo editaste a mano, no se toca).
+    // ===================================================================
+    try {
+      const { data: koLocal } = await supabase
+        .from("matches")
+        .select("id,home_team_id,away_team_id,round,manual_override")
+        .not("round", "is", null);
+
+      const pairKey = (a: string, b: string) => [a, b].sort().join("|");
+      const koByPair = new Map<
+        string,
+        { id: string; home_team_id: string; away_team_id: string; manual_override: boolean }
+      >();
+      for (const r of (koLocal ?? []) as Array<{
+        id: string; home_team_id: string | null; away_team_id: string | null;
+        round: string | null; manual_override: boolean | null;
+      }>) {
+        if (!r.home_team_id || !r.away_team_id) continue;
+        koByPair.set(pairKey(r.home_team_id, r.away_team_id), {
+          id: r.id,
+          home_team_id: r.home_team_id,
+          away_team_id: r.away_team_id,
+          manual_override: !!r.manual_override,
+        });
+      }
+
+      let koUpdated = 0;
+      if (koByPair.size) {
+        for (const m of (mData.matches ?? []) as Array<Record<string, unknown>>) {
+          if (!m.stage || m.stage === "GROUP_STAGE") continue; // solo eliminatorias
+          const homeT = m.homeTeam as { id?: number };
+          const awayT = m.awayTeam as { id?: number };
+          const home = homeT?.id ? teamByApi.get(homeT.id) : undefined;
+          const away = awayT?.id ? teamByApi.get(awayT.id) : undefined;
+          if (!home || !away) continue; // aún sin equipos definidos ("Winner ...")
+
+          const fixture = koByPair.get(pairKey(home.id, away.id));
+          if (!fixture) continue;            // ese cruce no está en tus partidos KO
+          if (fixture.manual_override) continue; // editado a mano: no tocar
+
+          const st = statusMap((m.status as string) ?? "SCHEDULED");
+          const score = m.score as { fullTime?: { home: number | null; away: number | null } };
+          const ftH = score?.fullTime?.home ?? null;
+          const ftA = score?.fullTime?.away ?? null;
+
+          // aún no jugado (sin marcador y no en juego) -> no escribimos nada
+          if (st === "scheduled" && ftH == null && ftA == null) continue;
+
+          // alinear el marcador a TU orientación (home/away de tu ficha)
+          let hs: number | null;
+          let as_: number | null;
+          if (home.id === fixture.home_team_id) { hs = ftH; as_ = ftA; }
+          else { hs = ftA; as_ = ftH; } // la API lo tiene al revés que tu ficha
+
+          let done = false;
+          for (let attempt = 0; attempt < 3 && !done; attempt++) {
+            const { error } = await supabase
+              .from("matches")
+              .update({ home_score: hs, away_score: as_, status: st, updated_at: new Date().toISOString() })
+              .eq("id", fixture.id);
+            if (!error) { done = true; koUpdated++; }
+            else { await new Promise((r) => setTimeout(r, 250 * (attempt + 1))); }
+          }
+        }
+      }
+      summary.ko = koUpdated;
+    } catch {
+      summary.ko = -1; // si algo falla aquí, no rompe el resto del sync
+    }
+
     // CLASIFICADOS -> teams.advanced (equipos que aparecen en cualquier eliminatoria)
     const advancedApi = new Set<number>();
     for (const m of (mData.matches ?? []) as Array<Record<string, unknown>>) {
@@ -313,14 +393,14 @@ export async function GET(request: Request) {
     try { await supabase.rpc("save_ranking_snapshot"); } catch { /* no rompe el sync */ }
 
     await supabase.from("api_sync_logs").insert({
-      source: "football-data", endpoint: "/standings + /matches + /scorers", status: "ok",
-      rows_upserted: summary.teams + summary.matches + summary.scorers, finished_at: new Date().toISOString(),
+      source: "football-data", endpoint: "/standings + /matches + /ko + /scorers", status: "ok",
+      rows_upserted: summary.teams + summary.matches + (summary.ko > 0 ? summary.ko : 0) + summary.scorers, finished_at: new Date().toISOString(),
     });
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await supabase.from("api_sync_logs").insert({
-      source: "football-data", endpoint: "/standings + /matches + /scorers", status: "error",
+      source: "football-data", endpoint: "/standings + /matches + /ko + /scorers", status: "error",
       error: message, finished_at: new Date().toISOString(),
     });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
