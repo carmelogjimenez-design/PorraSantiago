@@ -113,7 +113,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, ko: 0, scorers: 0, advanced: 0 };
+  const summary: Record<string, number> = { teams: 0, standings: 0, matches: 0, ko: 0, snapshot: 0, scorers: 0, advanced: 0 };
 
   try {
     const { data: groupsRows } = await supabase.from("groups").select("id,label");
@@ -298,6 +298,55 @@ export async function GET(request: Request) {
       summary.ko = koUpdated;
     } catch {
       summary.ko = -1; // si algo falla aquí, no rompe el resto del sync
+    }
+
+    // ===================================================================
+    // FOTO DE GOLES AL ARRANCAR LA FASE FINAL (players.goals_at_ko)
+    // -------------------------------------------------------------------
+    // Para que en la clasificación de FASE FINAL los goleadores sumen SOLO
+    // por los goles de la eliminatoria (no por los de grupos, que ya
+    // puntuaron), guardamos una FOTO del 'goals' de cada jugador justo
+    // cuando arranca el 1er dieciseisavos. Luego: goles_KO = goals - goals_at_ko.
+    //
+    // Se hace UNA sola vez: solo se fotografía a quien aún tiene goals_at_ko
+    // NULL, y solo si la fase final ya ha empezado (hay un KO con su hora
+    // ya pasada). En sucesivos syncs no se vuelve a tocar.
+    // ===================================================================
+    try {
+      // ¿ha arrancado ya la fase final?
+      const nowIso = new Date().toISOString();
+      const { count: koLiveCount } = await supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .not("round", "is", null)
+        .lte("kickoff_at", nowIso);
+
+      if ((koLiveCount ?? 0) > 0) {
+        // jugadores aún sin foto (goals_at_ko NULL), en dos tandas por el tope de 1000
+        const [snap1, snap2] = await Promise.all([
+          supabase.from("players").select("id,goals").is("goals_at_ko", null).range(0, 999),
+          supabase.from("players").select("id,goals").is("goals_at_ko", null).range(1000, 1999),
+        ]);
+        const toSnap = [...(snap1.data ?? []), ...(snap2.data ?? [])] as Array<{ id: string; goals: number | null }>;
+
+        let snapped = 0;
+        const sleepS = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        for (const pl of toSnap) {
+          let done = false;
+          for (let attempt = 0; attempt < 3 && !done; attempt++) {
+            const { error } = await supabase
+              .from("players")
+              .update({ goals_at_ko: pl.goals ?? 0 })
+              .eq("id", pl.id)
+              .is("goals_at_ko", null); // por si otro sync ya la puso en paralelo
+            if (!error) { done = true; snapped++; }
+            else { await sleepS(250 * (attempt + 1)); }
+          }
+        }
+        summary.snapshot = snapped; // nº de fotos tomadas (0 si ya estaban todas)
+      }
+    } catch {
+      summary.snapshot = -1; // no rompe el resto del sync
     }
 
     // CLASIFICADOS -> teams.advanced (equipos que aparecen en cualquier eliminatoria)
