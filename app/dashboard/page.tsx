@@ -5,12 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Avatar from "../components/avatar";
 import Countdown from "./countdown";
+import Bracket, { type KoMatchVM } from "./bracket";
 export const dynamic = "force-dynamic";
 
 type TeamRow = { id: string; name: string; flag_url: string | null; group_id: number | null };
 type MatchRow = { id: string; home_team_id: string; away_team_id: string; kickoff_at: string; status: string };
-type GroupRow = { id: number; label: string };
-type LbRow = { user_id: string; display_name: string; avatar_url: string | null; total_points: number | string };
+type KoLbRow = { user_id: string; display_name: string; avatar_url: string | null; total_points: number | string };
 
 const POS = ["#f5b301", "#c0c5cd", "#d59a5f"];
 
@@ -36,30 +36,10 @@ const DFX_CSS = `
 .dfx-hero-art{flex:none;width:300px;display:grid;place-items:center;position:relative}
 .dfx-art-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,45,85,.20),rgba(255,45,85,0));filter:blur(6px);z-index:0}
 .dfx-appicon{position:relative;z-index:1;width:200px;height:200px;object-fit:contain;filter:drop-shadow(0 22px 32px rgba(255,45,85,.32));transform:rotate(-4deg);animation:dfxfloat 6s ease-in-out infinite}
-.dfx-mesh{position:absolute;inset:0;z-index:-2;background:radial-gradient(55% 75% at 12% 18%,#FF6E8A 0%,rgba(255,110,138,0) 60%),radial-gradient(48% 65% at 88% 8%,#FF2D55 0%,rgba(255,45,85,0) 55%),radial-gradient(75% 95% at 72% 100%,#D81C57 0%,rgba(216,28,87,0) 60%),linear-gradient(125deg,#FF3A60 0%,#C61F41 100%);background-size:180% 180%;animation:dfxmesh 16s ease-in-out infinite}
-.dfx-grain{position:absolute;inset:0;z-index:-1;opacity:.10;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.dfx-orb{position:absolute;width:120px;height:120px;border-radius:50%;filter:blur(8px);z-index:-1;background:#fff;opacity:.12;right:18%;top:14%}
-.dfx-emblem{position:absolute;right:-30px;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.16;z-index:-1}
 .dfx-badge{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.28);padding:6px 13px;border-radius:999px}
-.dfx-pulse{width:7px;height:7px;border-radius:50%;background:#fff;animation:dfxpulse 2s infinite}
 .dfx-h1{font-family:var(--font-display),sans-serif;font-weight:800;letter-spacing:-.03em;font-size:clamp(40px,6.6vw,72px);line-height:.9;margin-top:14px;color:var(--text)}
 .dfx-gw{background:linear-gradient(120deg,#FF2D55,#FF5C7A);-webkit-background-clip:text;background-clip:text;color:transparent}
 .dfx-lead{margin-top:15px;max-width:34ch;font-weight:500;font-size:15px;color:var(--text-dim)}
-.dfx-clock{margin-top:26px;display:inline-flex;align-items:stretch;gap:8px;flex-wrap:wrap}
-.dfx-cl{min-width:74px;text-align:center;padding:14px 8px;border-radius:18px;background:linear-gradient(180deg,#fff,#FFF4F7);border:1px solid var(--border);box-shadow:0 1px 2px rgba(20,15,20,.04),0 14px 30px -18px rgba(255,45,85,.45)}
-.dfx-n{font-family:var(--font-display),sans-serif;font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
-.dfx-l{margin-top:7px;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--accent)}
-.dfx-next{margin-top:24px}
-.dfx-next-h{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
-.dfx-next-teams{margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.dfx-ct{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:17px;color:var(--text)}
-.dfx-vs{font-size:11px;font-weight:800;color:var(--text-dim)}
-.dfx-cflag{width:30px;height:21px;border-radius:4px;object-fit:cover;box-shadow:0 0 0 1px var(--border)}
-.dfx-cflag-empty{display:inline-block;background:var(--soft)}
-.dfx-next .dfx-clock{margin-top:14px}
-.dfx-kick{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:rgba(255,255,255,.95);min-width:auto;padding:13px 18px;text-align:left}
-.dfx-kick small{font-size:11px;font-weight:700;color:var(--text-dim)}
-.dfx-kick b{font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;margin-top:2px;color:var(--text)}
 .dfx-grid{display:grid;grid-template-columns:1fr 332px;gap:22px;margin-top:22px}
 .dfx-col{min-width:0;display:flex;flex-direction:column;gap:22px}
 .dfx-shead{display:flex;align-items:center;gap:10px;margin-bottom:13px}
@@ -67,19 +47,6 @@ const DFX_CSS = `
 .dfx-pip{width:18px;height:3px;border-radius:9px;background:linear-gradient(135deg,#FF2D55,#FF5C7A)}
 .dfx-more{margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)}
 .dfx-card{background:var(--card);border:1px solid var(--border);border-radius:20px;box-shadow:0 1px 2px rgba(20,15,20,.04),0 18px 40px -22px rgba(20,15,20,.20)}
-.dfx-ready{padding:22px 24px;position:relative;overflow:hidden}
-.dfx-ready-h{display:flex;align-items:center;gap:10px}
-.dfx-ready-h h2{font-family:var(--font-display),sans-serif;font-weight:800;font-size:20px}
-.dfx-tag{font-size:11px;font-weight:800;color:#fff;background:var(--green);padding:4px 11px;border-radius:999px}
-.dfx-checks{margin-top:18px;display:flex;flex-direction:column;gap:15px}
-.dfx-ck{display:flex;align-items:center;gap:13px}
-.dfx-ck-ico{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none}
-.dfx-ck-t{font-weight:700;font-size:14px}
-.dfx-ck-bar{margin-top:7px;height:6px;border-radius:99px;background:var(--soft);overflow:hidden}
-.dfx-ck-bar i{display:block;height:100%;border-radius:99px}
-.dfx-ck-v{font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;flex:none}
-.dfx-ck-txt{flex:1;min-width:0}
-.dfx-note{margin-top:14px;font-size:12px;font-weight:600;color:var(--text-dim)}
 .dfx-games{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .dfx-game{position:relative;padding:22px;overflow:hidden;display:block;transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s}
 .dfx-game:hover{transform:translateY(-5px);box-shadow:0 1px 2px rgba(20,15,20,.05),0 10px 30px -10px rgba(255,45,85,.45)}
@@ -94,20 +61,7 @@ const DFX_CSS = `
 .dfx-trivia-chip{width:52px;height:52px;border-radius:16px;flex:none;display:grid;place-items:center;font-size:24px;background:linear-gradient(135deg,#A24BFF,#FF2D55);box-shadow:0 8px 20px -8px rgba(140,50,200,.6)}
 .dfx-trivia h3{font-family:var(--font-display),sans-serif;font-weight:800;font-size:16px}
 .dfx-trivia-sub{font-size:13px;color:var(--text-dim);font-weight:500;margin-top:2px}
-.dfx-groups{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
-.dfx-grp{padding:15px 15px 11px}
-.dfx-grp-l{display:flex;align-items:center;gap:8px;margin-bottom:11px}
-.dfx-grp-b{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent-deep);display:grid;place-items:center;font-family:var(--font-display),sans-serif;font-weight:800;font-size:12px}
-.dfx-grp-l span{font-family:var(--font-display),sans-serif;font-weight:700;font-size:13px}
-.dfx-team{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;font-weight:600}
-.dfx-team b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .dfx-side{display:flex;flex-direction:column;gap:16px}
-.dfx-stat{display:flex;align-items:center;gap:15px;padding:18px}
-.dfx-ring{width:58px;height:58px;flex:none;position:relative}
-.dfx-ring .pct{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:12px}
-.dfx-big{font-family:var(--font-display),sans-serif;font-weight:800;font-size:25px;line-height:1}
-.dfx-big small{font-size:13px;color:var(--text-dim);font-weight:700}
-.dfx-cap{margin-top:5px;font-size:11px;font-weight:700;color:var(--text-dim)}
 .dfx-points{position:relative;overflow:hidden;color:#fff;padding:20px;border-radius:20px;background:linear-gradient(135deg,#FF2D55,#C61F41);box-shadow:0 10px 30px -10px rgba(255,45,85,.45);display:block;transition:.25s}
 .dfx-points:hover{transform:translateY(-3px)}
 .dfx-points-row{display:flex;align-items:center;gap:13px;position:relative}
@@ -131,67 +85,35 @@ const DFX_CSS = `
 .dfx-brand{margin-bottom:20px}
 .dfx-brand-name{font-family:var(--font-display),sans-serif;font-weight:800;font-size:15px;letter-spacing:.06em;line-height:1;text-transform:uppercase}
 .dfx-brand-sub{font-size:12px;font-weight:600;color:var(--text-dim);margin-top:5px}
-.dfx-live{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-display),sans-serif;font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--accent-deep);background:var(--accent-soft);border:1px solid var(--accent-soft);padding:14px 20px;border-radius:16px}
-.dfx-live-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:dfxpulse 1.6s infinite}
-@media(max-width:900px){.dfx-grid{grid-template-columns:1fr}.dfx-emblem{display:none}.dfx-groups{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.dfx-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.dfx-games{grid-template-columns:1fr}}
-@keyframes dfxmesh{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes dfxpulse{0%{box-shadow:0 0 0 0 rgba(255,45,85,.55)}70%{box-shadow:0 0 0 8px rgba(255,45,85,0)}100%{box-shadow:0 0 0 0 rgba(255,45,85,0)}}
 @keyframes dfxfloat{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(-4deg) translateY(-9px)}}
 @media(max-width:820px){.dfx-hero-art{display:none}}
-@media(prefers-reduced-motion:reduce){.dfx-mesh{animation:none}.dfx-pulse{animation:none}.dfx-live-dot{animation:none}.dfx-appicon{animation:none}}
+@media(prefers-reduced-motion:reduce){.dfx-appicon{animation:none}}
 `;
 
-const I_BALL = (<svg className="dfx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7l3 2-1 3.5h-4L9 9z" /></svg>);
-const I_GRID = (<svg className="dfx-ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>);
+const I_EYE = (<svg className="dfx-ic" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>);
 const I_TARGET = (<svg className="dfx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /></svg>);
 const I_TROPHY = (<svg className="dfx-ic" viewBox="0 0 24 24"><path d="M7 4h10v3a5 5 0 0 1-10 0zM5 5h2v2a2 2 0 0 1-2-2zM19 5h-2v2a2 2 0 0 0 2-2zM9 14h6l-1 4h-4z" /></svg>);
+const I_BRACKET = (<svg className="dfx-ic" viewBox="0 0 24 24"><path d="M4 5h5v6h6M4 19h5v-6" /><circle cx="18" cy="11" r="2" /></svg>);
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const nowIso = new Date().toISOString();
-  const [profileRes, totalRes, doneRes, firstRes, teamsRes, nextRes, groupsRes, lbRes, matchesGRes, scorersDoneRes] =
+  const [profileRes, teamsRes, nextRes, koLbRes, koAllRes] =
     await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
-      supabase.from("matches").select("id", { count: "exact", head: true }),
-      supabase.from("predictions").select("match_id").eq("user_id", user.id),
-      supabase.from("matches").select("kickoff_at").order("kickoff_at").limit(1).maybeSingle(),
       supabase.from("teams").select("id,name,flag_url,group_id"),
-      supabase.from("matches").select("id,home_team_id,away_team_id,kickoff_at,status").gt("kickoff_at", nowIso).order("kickoff_at").limit(5),
-      supabase.from("groups").select("id,label").order("id").limit(4),
-      supabase.rpc("get_leaderboard"),
-      supabase.from("matches").select("id,group_id"),
-      supabase.from("selected_scorers").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      // Próximos partidos: SOLO fase final (round no nulo)
+      supabase.from("matches").select("id,home_team_id,away_team_id,kickoff_at,status").not("round", "is", null).gt("kickoff_at", nowIso).order("kickoff_at").limit(5),
+      supabase.rpc("get_knockout_leaderboard"),
+      // Todos los partidos KO para el cuadro (bracket)
+      supabase.from("matches").select("home_team_id,away_team_id,kickoff_at,status,home_score,away_score,round,api_fixture_id").not("round", "is", null).order("api_fixture_id"),
     ]);
   const name = profileRes.data?.display_name ?? "Jugador";
-  const total = totalRes.count ?? 72;
-  const predRows = (doneRes.data ?? []) as { match_id: string }[];
-  const done = predRows.length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const kickoff = firstRes.data?.kickoff_at ?? "2026-06-11T16:00:00Z";
-
-  // Orden de grupos: nº de grupos (de 12) con TODOS sus partidos pronosticados
-  const matchesG = (matchesGRes.data ?? []) as { id: string; group_id: number | null }[];
-  const totalByGroup = new Map<number, number>();
-  const mGroup = new Map<string, number | null>();
-  for (const m of matchesG) {
-    mGroup.set(m.id, m.group_id);
-    if (m.group_id != null) totalByGroup.set(m.group_id, (totalByGroup.get(m.group_id) ?? 0) + 1);
-  }
-  const predByGroup = new Map<number, number>();
-  for (const pr of predRows) {
-    const g = mGroup.get(pr.match_id);
-    if (g != null) predByGroup.set(g, (predByGroup.get(g) ?? 0) + 1);
-  }
-  let groupsDone = 0;
-  for (const [g, tot] of totalByGroup) if (tot > 0 && (predByGroup.get(g) ?? 0) >= tot) groupsDone++;
-  const groupsTotal = 12;
-
-  const scorersDone = scorersDoneRes.count ?? 0;
-  const scorersTotal = 12;
-  const allDone = total > 0 && done >= total && groupsDone >= groupsTotal && scorersDone >= scorersTotal;
 
   const teams = (teamsRes.data ?? []) as TeamRow[];
   const teamById = new Map<string, TeamRow>(teams.map((t) => [t.id, t]));
@@ -205,16 +127,29 @@ export default async function DashboardPage() {
       kickoff: m.kickoff_at,
     };
   });
-  const groups = (groupsRes.data ?? []) as GroupRow[];
-  const lb = ((lbRes.data ?? []) as LbRow[]).map((r) => ({ ...r, total_points: Number(r.total_points) }));
+
+  // Clasificación FASE FINAL (desde 0)
+  const lb = ((koLbRes.data ?? []) as KoLbRow[]).map((r) => ({ ...r, total_points: Number(r.total_points) }));
   const meIdx = lb.findIndex((r) => r.user_id === user.id);
   const points = meIdx >= 0 ? lb[meIdx].total_points : 0;
   const posRank = meIdx >= 0 ? meIdx + 1 : lb.length;
   const topHasPoints = (lb[0]?.total_points ?? 0) > 0;
   const top3 = lb.slice(0, 3);
 
-  const R = 23, C = 2 * Math.PI * R;
-  const offset = C - (pct / 100) * C;
+  // Partidos KO -> modelo para el cuadro (bracket)
+  type KoRow = { home_team_id: string | null; away_team_id: string | null; kickoff_at: string | null; status: string; home_score: number | null; away_score: number | null; round: string; api_fixture_id: number | null };
+  const koMatches: KoMatchVM[] = ((koAllRes.data ?? []) as KoRow[]).map((m, idx) => {
+    const h = m.home_team_id ? teamById.get(m.home_team_id) : undefined;
+    const a = m.away_team_id ? teamById.get(m.away_team_id) : undefined;
+    return {
+      round: m.round,
+      order: m.api_fixture_id ?? idx,
+      homeName: h?.name ?? null, homeFlag: h?.flag_url ?? null,
+      awayName: a?.name ?? null, awayFlag: a?.flag_url ?? null,
+      homeScore: m.home_score, awayScore: m.away_score,
+      status: m.status, kickoff: m.kickoff_at,
+    };
+  });
 
   return (
     <AppShell userName={name} points={points}>
@@ -226,10 +161,10 @@ export default async function DashboardPage() {
             <div className="dfx-hero-main">
               <div className="dfx-brand">
                 <div className="dfx-brand-name">La Porra de Santiago</div>
-                <div className="dfx-brand-sub">Mundial 2026 · 48 selecciones</div>
+                <div className="dfx-brand-sub">Mundial 2026 · Fase final</div>
               </div>
               <h1 className="dfx-h1">Predice.<br />Compite.<br /><span className="dfx-gw">Gana.</span></h1>
-              <p className="dfx-lead">En Santiago todos sabéis más que el seleccionador. La porra dirá quién es el crack… y quién el cuñao.</p>
+              <p className="dfx-lead">Empieza la eliminatoria. Ronda a ronda, a por el título. La porra dirá quién es el crack… y quién el cuñao.</p>
               <Countdown matches={upcoming} />
             </div>
             <div className="dfx-hero-art">
@@ -242,29 +177,13 @@ export default async function DashboardPage() {
 
         <div className="dfx-grid">
           <div className="dfx-col">
-            {/* completion */}
-            <div className="dfx-card dfx-ready">
-              <div className="dfx-ready-h">
-                <h2>{allDone ? "Todo listo" : "Antes del pitido"}</h2>
-                {allDone
-                  ? <span className="dfx-tag">LISTO PARA EL SAQUE</span>
-                  : <span className="dfx-cap" style={{ marginLeft: "auto" }}>Te falta algo ⏰</span>}
-              </div>
-              <div className="dfx-checks">
-                <CheckRow icon={I_BALL} href="/grupos" label="Partidos" done={done} total={total} />
-                <CheckRow icon={I_GRID} href="/orden" label="Orden de grupos" done={groupsDone} total={groupsTotal} />
-                <CheckRow icon={I_TARGET} href="/goleadores" label="Goleadores" done={scorersDone} total={scorersTotal} />
-              </div>
-              {!allDone && <p className="dfx-note">Lo que no rellenes antes de que empiece cada partido se queda sin puntos. ¡No te despistes! 😏</p>}
-            </div>
-
             {/* tu juego */}
             <div>
               <div className="dfx-shead"><span className="dfx-pip" /><h2>Tu juego</h2></div>
               <div className="dfx-games">
-                <GameCard href="/grupos" icon={I_BALL} title="Fase de grupos" sub={done >= total ? "¡Todo pronosticado!" : `${total - done} partidos sin pronosticar`} />
-                <GameCard href="/orden" icon={I_GRID} title="Orden de grupos" sub="Predice 1º y 2º de cada grupo" />
-                <GameCard href="/goleadores" icon={I_TARGET} title="Goleadores" sub="1 goleador por cada grupo" />
+                <GameCard href="/fase-final" icon={I_BRACKET} title="Fase final" sub="Pronostica los cruces de la eliminatoria" />
+                <GameCard href="/pronosticos" icon={I_EYE} title="Pronósticos" sub="Lo que ha puesto la peña, partido a partido" />
+                <GameCard href="/goleadores" icon={I_TARGET} title="Goleadores" sub="Tus 3 goleadores para la fase final" />
                 <GameCard href="/ranking" icon={I_TROPHY} title="Ranking" sub="A por el oro · ¿quién manda aquí?" />
               </div>
               <Link href="/trivial" className="dfx-card dfx-trivia" style={{ marginTop: 15 }}>
@@ -276,53 +195,23 @@ export default async function DashboardPage() {
                 <span style={{ color: "var(--text-dim)" }}>→</span>
               </Link>
             </div>
-
-            {/* grupos */}
-            <div>
-              <div className="dfx-shead"><span className="dfx-pip" /><h2>Grupos</h2><Link href="/grupos" className="dfx-more">Ver todos →</Link></div>
-              <div className="dfx-groups">
-                {groups.map((g) => {
-                  const gt = teams.filter((t) => t.group_id === g.id).slice(0, 4);
-                  return (
-                    <div key={g.id} className="dfx-card dfx-grp">
-                      <div className="dfx-grp-l"><span className="dfx-grp-b">{g.label}</span><span>Grupo {g.label}</span></div>
-                      {gt.map((t) => (
-                        <div key={t.id} className="dfx-team"><Flag src={t.flag_url} name={t.name} sm /><b>{t.name}</b></div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
           {/* SIDEBAR */}
           <div className="dfx-side">
-            <div className="dfx-card dfx-stat">
-              <div className="dfx-ring">
-                <svg width="58" height="58" style={{ transform: "rotate(-90deg)" }}>
-                  <circle cx="29" cy="29" r={R} fill="none" stroke="var(--soft)" strokeWidth="6.5" />
-                  <circle cx="29" cy="29" r={R} fill="none" stroke="url(#dfxring)" strokeWidth="6.5" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={offset} />
-                  <defs><linearGradient id="dfxring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FF2D55" /><stop offset="1" stopColor="#FF5C7A" /></linearGradient></defs>
-                </svg>
-                <div className="pct">{pct}%</div>
-              </div>
-              <div><div className="dfx-big">{done}<small>/{total}</small></div><div className="dfx-cap">Pronosticados</div></div>
-            </div>
-
             <Link href="/ranking" className="dfx-points">
               <div className="dfx-points-row">
                 <span className="dfx-gico">{I_TROPHY}</span>
                 <div style={{ flex: 1 }}>
                   <div className="dfx-big2">{points} <small>pts</small></div>
-                  <div className="dfx-cap2">{topHasPoints ? `Puesto #${posRank} de ${lb.length}` : "El ranking abre con el primer gol"}</div>
+                  <div className="dfx-cap2">{topHasPoints ? `Puesto #${posRank} de ${lb.length} · Fase final` : "La fase final arranca con el 1er dieciseisavos"}</div>
                 </div>
                 <span style={{ opacity: .8 }}>→</span>
               </div>
             </Link>
 
             <div className="dfx-card dfx-panel">
-              <div className="dfx-ph">Top 3 por ahora {topHasPoints && <Link href="/ranking" className="dfx-more">Ver todo</Link>}</div>
+              <div className="dfx-ph">Top 3 · Fase final {topHasPoints && <Link href="/ranking" className="dfx-more">Ver todo</Link>}</div>
               {topHasPoints ? (
                 top3.map((r, i) => (
                   <div key={r.user_id} className="dfx-rank3">
@@ -333,12 +222,12 @@ export default async function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="dfx-empty"><div className="e">{I_TROPHY}</div>Aún sin clasificación.<br />Empieza cuando ruede el balón.</div>
+                <div className="dfx-empty"><div className="e">{I_TROPHY}</div>Todos a 0.<br />La fase final arranca con el 1er dieciseisavos.</div>
               )}
             </div>
 
             <div className="dfx-card dfx-panel">
-              <div className="dfx-ph">Próximos partidos <Link href="/grupos" className="dfx-more">Ver todos</Link></div>
+              <div className="dfx-ph">Próximos partidos <Link href="/fase-final" className="dfx-more">Ver todos</Link></div>
               {next.length === 0 ? (
                 <p className="dfx-empty">Sin partidos próximos.</p>
               ) : (
@@ -363,6 +252,14 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* CUADRO / BRACKET */}
+        <section style={{ marginTop: 26 }}>
+          <div className="dfx-shead"><span className="dfx-pip" /><h2>El cuadro · camino a la final</h2></div>
+          <div className="dfx-card" style={{ padding: 14 }}>
+            <Bracket matches={koMatches} />
+          </div>
+        </section>
+
         <div className="dfx-foot">© 2026 La Porra de Santiago · Todos los derechos pertenecen al puto amo de Carmelo García 👑</div>
       </div>
     </AppShell>
@@ -374,21 +271,6 @@ function Flag({ src, name, sm }: { src: string | null; name: string; sm?: boolea
   if (!src) return <span className={`${cls} flex-none rounded bg-[var(--soft)]`} aria-label={name} />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={name} className={`${cls} flex-none rounded object-cover ring-1 ring-[var(--border)]`} />;
-}
-
-function CheckRow({ icon, href, label, done, total }: { icon: ReactNode; href: string; label: string; done: number; total: number }) {
-  const full = total > 0 && done >= total;
-  const p = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  return (
-    <Link href={href} className="dfx-ck">
-      <span className="dfx-ck-ico" style={{ background: full ? "var(--green-soft)" : "var(--accent-soft)", color: full ? "var(--green)" : "var(--accent)" }}>{icon}</span>
-      <span className="dfx-ck-txt">
-        <span className="dfx-ck-t" style={{ display: "block" }}>{label}</span>
-        <span className="dfx-ck-bar" style={{ display: "block" }}><i style={{ width: `${p}%`, background: full ? "linear-gradient(90deg,#1FC472,#16A35C)" : "linear-gradient(90deg,#FF2D55,#FF5C7A)" }} /></span>
-      </span>
-      <span className="dfx-ck-v" style={{ color: full ? "var(--green)" : "var(--text-dim)" }}>{done}/{total}{full ? " ✓" : ""}</span>
-    </Link>
-  );
 }
 
 function GameCard({ href, icon, title, sub }: { href: string; icon: ReactNode; title: string; sub: string }) {
