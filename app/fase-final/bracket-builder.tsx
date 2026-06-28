@@ -25,8 +25,26 @@ function Flag({ src, name, sm }: { src: string | null; name: string; sm?: boolea
   return <img src={src} alt={name} className={`${cls} flex-none rounded object-cover ring-1 ring-[var(--border)]`} />;
 }
 
-export default function BracketBuilder({ r32, initial, locked }: { r32: BkR32VM[]; initial: BkInitial; locked: boolean }) {
+// Orden OFICIAL del cuadro (FIFA) por pareja de equipos -> el constructor empareja
+// igual que la realidad aunque el orden de la base de datos no sea el canónico.
+const CANON_R32: [string, string][] = [
+  ["Germany", "Paraguay"], ["France", "Sweden"], ["South Africa", "Canada"], ["Netherlands", "Morocco"],
+  ["Portugal", "Croatia"], ["Spain", "Austria"], ["United States", "Bosnia-Herzegovina"], ["Belgium", "Senegal"],
+  ["Brazil", "Japan"], ["Ivory Coast", "Norway"], ["Mexico", "Ecuador"], ["England", "Congo DR"],
+  ["Argentina", "Cape Verde Islands"], ["Australia", "Egypt"], ["Switzerland", "Algeria"], ["Colombia", "Ghana"],
+];
+const bkPairKey = (a: string | null, b: string | null) => [a ?? "", b ?? ""].sort().join("|");
+const BK_CANON_IDX = new Map<string, number>();
+CANON_R32.forEach(([h, a], i) => BK_CANON_IDX.set(bkPairKey(h, a), i));
+
+export default function BracketBuilder({ r32: r32Prop, initial, locked }: { r32: BkR32VM[]; initial: BkInitial; locked: boolean }) {
   const supabase = createClient();
+
+  // Reordena los 16avos al orden oficial del cuadro (por nombres de equipo)
+  const r32 = useMemo(() => {
+    const idx = (m: BkR32VM) => BK_CANON_IDX.get(bkPairKey(m.home.name, m.away.name)) ?? 99;
+    return [...r32Prop].sort((a, b) => idx(a) - idx(b));
+  }, [r32Prop]);
 
   // Mapa de equipos (todos los posibles salen de los 16avos)
   const teamById = useMemo(() => {

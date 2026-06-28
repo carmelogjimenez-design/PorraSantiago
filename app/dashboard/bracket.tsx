@@ -117,16 +117,32 @@ function Card({ m, x, y }: { m: KoMatchVM | null; x: number; y: number }) {
   );
 }
 
+// Orden OFICIAL del cuadro (FIFA), por pareja de equipos. Así el bracket pinta
+// bien aunque el orden de la base de datos no sea el canónico.
+const CANON_R32: [string, string][] = [
+  ["Germany", "Paraguay"], ["France", "Sweden"], ["South Africa", "Canada"], ["Netherlands", "Morocco"],
+  ["Portugal", "Croatia"], ["Spain", "Austria"], ["United States", "Bosnia-Herzegovina"], ["Belgium", "Senegal"],
+  ["Brazil", "Japan"], ["Ivory Coast", "Norway"], ["Mexico", "Ecuador"], ["England", "Congo DR"],
+  ["Argentina", "Cape Verde Islands"], ["Australia", "Egypt"], ["Switzerland", "Algeria"], ["Colombia", "Ghana"],
+];
+const pairKey = (a: string | null, b: string | null) => [a ?? "", b ?? ""].sort().join("|");
+const CANON_IDX = new Map<string, number>();
+CANON_R32.forEach(([h, a], i) => CANON_IDX.set(pairKey(h, a), i));
+
 export default function Bracket({ matches }: { matches: KoMatchVM[] }) {
+  const r32order = (m: KoMatchVM) => CANON_IDX.get(pairKey(m.homeName, m.awayName)) ?? (m.order ?? 99);
+
   // Agrupar por ronda, ordenar y rellenar hasta el nº esperado (huecos = null)
   const byRound: Record<string, (KoMatchVM | null)[]> = {};
   for (const k of ROUND_KEYS) byRound[k] = [];
   for (const m of matches) if (byRound[m.round]) byRound[m.round].push(m);
   for (const k of ROUND_KEYS) {
-    byRound[k] = padTo(
-      [...byRound[k]].sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)),
-      EXPECTED[k]
+    const sorted = [...byRound[k]].sort((a, b) =>
+      k === "R32"
+        ? r32order(a as KoMatchVM) - r32order(b as KoMatchVM)
+        : (a?.order ?? 0) - (b?.order ?? 0)
     );
+    byRound[k] = padTo(sorted, EXPECTED[k]);
   }
 
   // Lado izquierdo (primera mitad) y derecho (segunda mitad) de cada ronda
