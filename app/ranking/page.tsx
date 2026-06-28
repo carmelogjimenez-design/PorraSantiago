@@ -7,6 +7,8 @@ import Icon from "../components/icons";
 import RankingTools from "./ranking-tools";
 import RankingTimeline from "./timeline";
 import RankingMofa from "./mofa";
+import RankingTabs from "./tabs";
+import KoLeaderboard, { type KoLbRow } from "./ko-leaderboard";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +35,12 @@ export default async function RankingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: lbData } = await supabase.rpc("get_ranking_movement");
-  const lb = ((lbData ?? []) as LbRow[]).map((r) => ({
+  const [movRes, koRes] = await Promise.all([
+    supabase.rpc("get_ranking_movement"),
+    supabase.rpc("get_knockout_leaderboard"),
+  ]);
+
+  const lb = ((movRes.data ?? []) as LbRow[]).map((r) => ({
     ...r,
     total_points: Number(r.total_points),
     exactos: Number(r.exactos),
@@ -42,6 +48,15 @@ export default async function RankingPage() {
     delta_points: Number(r.delta_points),
     prev_rank: r.prev_rank == null ? null : Number(r.prev_rank),
   }));
+
+  const koRows = ((koRes.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    user_id: String(r.user_id),
+    display_name: String(r.display_name),
+    avatar_url: (r.avatar_url as string | null) ?? null,
+    total_points: Number(r.total_points),
+    aciertos: Number(r.aciertos),
+    jugados: Number(r.jugados),
+  })) as KoLbRow[];
 
   const me = lb.find((r) => r.user_id === user.id);
   const myPoints = me?.total_points ?? 0;
@@ -82,13 +97,9 @@ export default async function RankingPage() {
   const mvp = moved ? byDelta[0] : null;
   const donkey = moved && byDelta.length > 1 ? byDelta[byDelta.length - 1] : null;
 
-  return (
-    <AppShell userName={myName} points={myPoints}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
-      <p className="mt-1 text-sm text-[var(--text-dim)]">
-        {lb.length} {lb.length === 1 ? "jugador" : "jugadores"} en la porra · 3 pts exacto · 1 pt acierto.
-      </p>
-
+  // ---- Vista "Primera ronda" (todo lo de grupos, intacto) ----
+  const grupos = (
+    <>
       {rivals.length > 0 && (
         <RankingTools shareText={shareText} meName={myName} mePoints={myPoints} rivals={rivals} />
       )}
@@ -198,6 +209,19 @@ export default async function RankingPage() {
           );
         })}
       </div>
+    </>
+  );
+
+  // ---- Vista "Fase final" (ranking KO desde 0) ----
+  const faseFinal = <KoLeaderboard rows={koRows} meId={user.id} />;
+
+  return (
+    <AppShell userName={myName} points={myPoints}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Ranking</h1>
+      <p className="mt-1 text-sm text-[var(--text-dim)]">
+        {lb.length} {lb.length === 1 ? "jugador" : "jugadores"} · grupos 3/5/8 · fase final desde 0.
+      </p>
+      <RankingTabs grupos={grupos} faseFinal={faseFinal} />
     </AppShell>
   );
 }
