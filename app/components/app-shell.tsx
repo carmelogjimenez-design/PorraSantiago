@@ -8,8 +8,6 @@ import Avatar from "./avatar";
 const BIZUM = "+34 635 80 25 46";
 const NAV = [
   { href: "/dashboard", label: "Inicio", icon: "home" },
-  { href: "/grupos", label: "Fase de grupos", icon: "ball" },
-  { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/fase-final", label: "Fase final", icon: "trophy" },
@@ -20,14 +18,12 @@ const NAV = [
 ];
 const MOBILE = [
   { href: "/dashboard", label: "Inicio", icon: "home" },
-  { href: "/grupos", label: "Grupos", icon: "ball" },
+  { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
 ];
 const MORE = [
-  { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/fase-final", label: "Fase final", icon: "trophy" },
-  { href: "/orden", label: "Orden de grupos", icon: "grid" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/trivial", label: "Trivial", icon: "bulb" },
   { href: "/reglas", label: "Reglas", icon: "book" },
