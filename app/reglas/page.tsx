@@ -2,9 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../components/app-shell";
 import Icon from "../components/icons";
-
 export const dynamic = "force-dynamic";
-
 function Row({ label, pts, plus }: { label: string; pts: number; plus?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] py-2.5 first:border-t-0">
@@ -15,7 +13,6 @@ function Row({ label, pts, plus }: { label: string; pts: number; plus?: boolean 
     </div>
   );
 }
-
 function Section({ icon, title, subtitle, children }: { icon: string; title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="card p-4 sm:p-5">
@@ -28,19 +25,16 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
     </div>
   );
 }
-
 export default async function ReglasPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-
   const [profileRes, myPtsRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
   ]);
   const name = profileRes.data?.display_name ?? "Jugador";
   const points = Number(myPtsRes.data ?? 0);
-
   return (
     <AppShell userName={name} points={points}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight">Reglas</h1>
@@ -48,26 +42,54 @@ export default async function ReglasPage() {
         Así se reparten los puntos. Gana quien más sume al final del Mundial. 🏆
       </p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      {/* ===================== FASE DE GRUPOS ===================== */}
+      <div className="mt-6 flex items-center gap-2">
+        <span className="text-lg">⚽</span>
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-extrabold tracking-tight">Primera ronda (grupos)</h2>
+      </div>
+      <p className="mt-1 text-[13px] text-[var(--text-dim)]">Clasificación &quot;Primera ronda&quot;. Acumulativa.</p>
+
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <Section icon="ball" title="Partidos" subtitle="Fase de grupos · la puntuación es acumulativa.">
           <Row label="Aciertas quién gana (o el empate)" pts={3} />
           <Row label="Aciertas además la diferencia de goles" pts={5} />
           <Row label="Clavas el marcador exacto" pts={8} />
         </Section>
-
         <Section icon="target" title="Goleadores" subtitle="Eliges 3 jugadores para todo el torneo.">
           <Row label="Por cada gol que marque cada elegido" pts={3} />
         </Section>
-
         <Section icon="grid" title="Orden de grupos" subtitle="Aciertas la posición exacta. Cuenta al cerrarse el grupo.">
           <Row label="1º clasificado correcto" pts={5} />
           <Row label="2º clasificado correcto" pts={5} />
           <Row label="3º clasificado correcto" pts={3} />
           <Row label="4º clasificado correcto" pts={3} />
         </Section>
-
         <Section icon="trophy" title="Pase a dieciseisavos" subtitle="Acumulable con la posición exacta del grupo.">
           <Row label="Cada equipo que pusiste 1º, 2º o 3º y se clasifica" pts={5} plus />
+        </Section>
+      </div>
+
+      {/* ===================== FASE FINAL ===================== */}
+      <div className="mt-8 flex items-center gap-2">
+        <span className="text-lg">🏆</span>
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-extrabold tracking-tight">Fase final (eliminatorias)</h2>
+      </div>
+      <p className="mt-1 text-[13px] text-[var(--text-dim)]">
+        Clasificación nueva que arranca <span className="font-bold text-[var(--text)]">desde 0</span> con los dieciseisavos. La de grupos queda archivada.
+      </p>
+
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <Section icon="ball" title="Partidos KO" subtitle="Mismo 3/5/8 que en grupos · sobre el resultado final, incluida la prórroga.">
+          <Row label="Aciertas quién pasa (o el resultado)" pts={3} />
+          <Row label="Aciertas además la diferencia de goles" pts={5} />
+          <Row label="Clavas el marcador exacto" pts={8} />
+        </Section>
+        <Section icon="target" title="Goleadores fase final" subtitle="Eliges 3 de tus 12 goleadores de grupos.">
+          <Row label="Por cada gol que marquen (cuentan TODOS sus goles del torneo)" pts={3} />
+        </Section>
+        <Section icon="trophy" title="Campeón y subcampeón" subtitle="Los eliges antes de los dieciseisavos.">
+          <Row label="Aciertas el CAMPEÓN del Mundial" pts={15} />
+          <Row label="Aciertas el SUBCAMPEÓN" pts={10} />
         </Section>
       </div>
 
