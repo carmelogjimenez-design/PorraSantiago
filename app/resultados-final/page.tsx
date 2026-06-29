@@ -9,7 +9,7 @@ type MatchRow = {
   id: string; round: string | null; home_team_id: string | null; away_team_id: string | null;
   kickoff_at: string | null; status: string; home_score: number | null; away_score: number | null; api_fixture_id: number | null;
 };
-type PlayerRow = { id: string; full_name: string; team_id: string; goals: number | null; goals_override: number | null; goals_at_ko: number | null };
+type PlayerRow = { id: string; full_name: string; team_id: string; goals: number | null; goals_override: number | null; goals_at_ko: number | null; ko_minute: string | null };
 type PickRow = {
   user_id: string; display_name: string | null; slot: string;
   home_team_id: string | null; away_team_id: string | null; pred_home: number | null; pred_away: number | null;
@@ -49,7 +49,7 @@ export default async function ResultadosFinalPage() {
   if (koTeamIds.length) {
     const { data: pl } = await supabase
       .from("players")
-      .select("id,full_name,team_id,goals,goals_override,goals_at_ko")
+      .select("id,full_name,team_id,goals,goals_override,goals_at_ko,ko_minute")
       .in("team_id", koTeamIds);
     for (const p of (pl ?? []) as PlayerRow[]) {
       const cur = p.goals_override ?? p.goals ?? 0;
@@ -57,7 +57,7 @@ export default async function ResultadosFinalPage() {
       const ko = Math.max(cur - snap, 0);
       if (ko > 0) {
         const arr = scorersByTeam.get(p.team_id) ?? [];
-        arr.push({ name: p.full_name, goals: ko });
+        arr.push({ name: p.full_name, goals: ko, minute: p.ko_minute ?? null });
         scorersByTeam.set(p.team_id, arr);
       }
     }

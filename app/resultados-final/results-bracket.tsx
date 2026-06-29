@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 export type RfPred = { userId: string; name: string; home: number; away: number };
-export type RfScorer = { name: string; goals: number };
+export type RfScorer = { name: string; goals: number; minute: string | null };
 export type RfMatch = {
   matchId: string;
   round: string;
@@ -30,7 +30,16 @@ function Flag({ src, name }: { src: string | null; name: string }) {
 }
 
 function fmtScorers(list: RfScorer[]): string {
-  return list.map((s) => (s.goals > 1 ? `${s.name} ×${s.goals}` : s.name)).join(", ");
+  return list
+    .map((s) => {
+      const min = s.minute ? s.minute.trim() : "";
+      if (min) {
+        const shown = /^\d+$/.test(min) ? `${min}'` : min;
+        return `${s.name} ${shown}`;
+      }
+      return s.goals > 1 ? `${s.name} ×${s.goals}` : s.name;
+    })
+    .join(", ");
 }
 
 export default function ResultsBracket({ matches, meId }: { matches: RfMatch[]; meId: string }) {
