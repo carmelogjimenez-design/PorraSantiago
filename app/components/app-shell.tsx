@@ -11,6 +11,7 @@ const NAV = [
   { href: "/pronosticos", label: "Pronósticos", icon: "eye" },
   { href: "/goleadores", label: "Goleadores", icon: "target" },
   { href: "/fase-final", label: "Fase final", icon: "trophy" },
+  { href: "/resultados-final", label: "Resultados", icon: "eye" },
   { href: "/ranking", label: "Ranking", icon: "trophy" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/trivial", label: "Trivial", icon: "bulb" },
@@ -24,6 +25,7 @@ const MOBILE = [
 ];
 const MORE = [
   { href: "/fase-final", label: "Fase final", icon: "trophy" },
+  { href: "/resultados-final", label: "Resultados", icon: "eye" },
   { href: "/premios", label: "Premios", icon: "gift" },
   { href: "/trivial", label: "Trivial", icon: "bulb" },
   { href: "/reglas", label: "Reglas", icon: "book" },
