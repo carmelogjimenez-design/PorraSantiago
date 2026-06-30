@@ -126,7 +126,7 @@ export default async function DashboardPage() {
       supabase.from("matches").select("id,home_team_id,away_team_id,kickoff_at,status").not("round", "is", null).gt("kickoff_at", nowIso).order("kickoff_at").limit(5),
       supabase.rpc("get_knockout_leaderboard"),
       // Todos los partidos KO para el cuadro (bracket)
-      supabase.from("matches").select("home_team_id,away_team_id,kickoff_at,status,home_score,away_score,round,api_fixture_id").not("round", "is", null).order("api_fixture_id"),
+      supabase.from("matches").select("home_team_id,away_team_id,kickoff_at,status,home_score,away_score,round,api_fixture_id,advancer_team_id").not("round", "is", null).order("api_fixture_id"),
     ]);
   const name = profileRes.data?.display_name ?? "Jugador";
 
@@ -152,10 +152,11 @@ export default async function DashboardPage() {
   const top3 = lb.slice(0, 3);
 
   // Partidos KO -> modelo para el cuadro (bracket)
-  type KoRow = { home_team_id: string | null; away_team_id: string | null; kickoff_at: string | null; status: string; home_score: number | null; away_score: number | null; round: string; api_fixture_id: number | null };
+  type KoRow = { home_team_id: string | null; away_team_id: string | null; kickoff_at: string | null; status: string; home_score: number | null; away_score: number | null; round: string; api_fixture_id: number | null; advancer_team_id: string | null };
   const koMatches: KoMatchVM[] = ((koAllRes.data ?? []) as KoRow[]).map((m, idx) => {
     const h = m.home_team_id ? teamById.get(m.home_team_id) : undefined;
     const a = m.away_team_id ? teamById.get(m.away_team_id) : undefined;
+    const adv = m.advancer_team_id ? teamById.get(m.advancer_team_id) : undefined;
     return {
       round: m.round,
       order: m.api_fixture_id ?? idx,
@@ -163,6 +164,7 @@ export default async function DashboardPage() {
       awayName: a?.name ?? null, awayFlag: a?.flag_url ?? null,
       homeScore: m.home_score, awayScore: m.away_score,
       status: m.status, kickoff: m.kickoff_at,
+      advancerName: adv?.name ?? null,
     };
   });
 

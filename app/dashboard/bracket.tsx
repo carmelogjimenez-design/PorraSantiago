@@ -6,6 +6,7 @@ export type KoMatchVM = {
   awayName: string | null; awayFlag: string | null;
   homeScore: number | null; awayScore: number | null;
   status: string; kickoff: string | null;
+  advancerName?: string | null; // quién pasó (solo se rellena en empates por penaltis)
 };
 
 // Códigos de selección (mismas colisiones resueltas que en el dashboard)
@@ -143,6 +144,39 @@ export default function Bracket({ matches }: { matches: KoMatchVM[] }) {
         : (a?.order ?? 0) - (b?.order ?? 0)
     );
     byRound[k] = padTo(sorted, EXPECTED[k]);
+  }
+
+  // ---- Octavos automático ----
+  // Si todavía no hay partidos REALES de octavos en la base, colocamos en cada
+  // hueco al ganador de su 16avos en cuanto se conoce (por marcador o, en empate,
+  // por el equipo que pasó en los penaltis = advancerName). El rival aparece como
+  // "—" hasta que se juegue el otro 16avos. Cuartos+ siguen "Por definir".
+  const winnerOf = (m: KoMatchVM | null): { name: string; flag: string | null } | null => {
+    if (!m || m.status !== "finished" || m.homeScore == null || m.awayScore == null) return null;
+    if (m.homeScore > m.awayScore) return { name: m.homeName ?? "", flag: m.homeFlag };
+    if (m.awayScore > m.homeScore) return { name: m.awayName ?? "", flag: m.awayFlag };
+    // empate -> penaltis: el que pasó lo dice advancerName
+    if (m.advancerName && m.advancerName === m.homeName) return { name: m.homeName, flag: m.homeFlag };
+    if (m.advancerName && m.advancerName === m.awayName) return { name: m.awayName, flag: m.awayFlag };
+    return null; // empate sin resolver todavía
+  };
+  const hasRealR16 = byRound["R16"].some((m) => m && (m.homeName || m.awayName));
+  if (!hasRealR16) {
+    const r32 = byRound["R32"];
+    const synth: (KoMatchVM | null)[] = [];
+    for (let i = 0; i < EXPECTED.R16; i++) {
+      const wA = winnerOf(r32[2 * i] ?? null);
+      const wB = winnerOf(r32[2 * i + 1] ?? null);
+      if (!wA && !wB) { synth.push(null); continue; }
+      synth.push({
+        round: "R16", order: i,
+        homeName: wA?.name ?? null, homeFlag: wA?.flag ?? null,
+        awayName: wB?.name ?? null, awayFlag: wB?.flag ?? null,
+        homeScore: null, awayScore: null,
+        status: "scheduled", kickoff: null, advancerName: null,
+      });
+    }
+    byRound["R16"] = padTo(synth, EXPECTED.R16);
   }
 
   // Lado izquierdo (primera mitad) y derecho (segunda mitad) de cada ronda
