@@ -20,7 +20,7 @@ export default async function FaseFinalPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, myPtsRes, teamsRes, matchesRes, bracketRes, ssRes, fsRes, lbRes] = await Promise.all([
+  const [profileRes, myPtsRes, teamsRes, matchesRes, bracketRes, ssRes, fsRes, lbRes, lockedRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_my_points"),
     supabase.from("teams").select("id,name,flag_url,group_id"),
@@ -29,6 +29,7 @@ export default async function FaseFinalPage() {
     supabase.from("selected_scorers").select("player_id,slot").eq("user_id", user.id).order("slot"),
     supabase.from("final_scorers").select("player_id").eq("user_id", user.id),
     supabase.rpc("get_knockout_leaderboard"),
+    supabase.rpc("bracket_locked"),
   ]);
 
   const name = profileRes.data?.display_name ?? "Jugador";
@@ -70,12 +71,17 @@ export default async function FaseFinalPage() {
 
   const lbRows = (lbRes.data ?? []) as KoLbRow[];
 
-  // Countdown al primer dieciseisavos (el más temprano) + candado del cuadro
+  // Countdown al primer dieciseisavos (el más temprano) -> SOLO informativo (global)
   const firstKo = matches.length ? [...matches].map((m) => m.kickoff_at).sort()[0] : null;
   const whenLabel = firstKo
     ? new Date(firstKo).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
     : null;
   const started = firstKo ? Date.now() >= new Date(firstKo).getTime() : false;
+
+  // Candado del cuadro: fuente de verdad = bracket_locked() (v2, per-usuario).
+  // Bloquea global cuando arranca la eliminatoria, PERO devuelve false para quien
+  // tenga profiles.bracket_unlocked = true (desbloqueo puntual desde admin).
+  const locked = lockedRes.data === true;
 
   return (
     <AppShell userName={name} points={points}>
@@ -101,7 +107,7 @@ export default async function FaseFinalPage() {
       {r32.length === 0 ? (
         <div className="card mt-8 p-6 text-center text-sm text-[var(--text-dim)]">Aún no hay partidos cargados.</div>
       ) : (
-        <BracketBuilder r32={r32} initial={initial} locked={started} />
+        <BracketBuilder r32={r32} initial={initial} locked={locked} />
       )}
 
       {/* Clasificación fase final */}
